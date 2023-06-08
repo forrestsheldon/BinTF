@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.16
+# v0.19.22
 
 using Markdown
 using InteractiveUtils
@@ -295,7 +295,7 @@ begin
 		f*gno(z)*gex(z) + (1-f)*gno(z)
 	end
 
-	gν(z) = 1 + ν*(z-1)
+	gν(z) = Gpois(z, ν)
 	gex(z) = Gex(z, μ, r)
 	gno(z) = Gpois(gex(gν(z)), f*γ)	
 	

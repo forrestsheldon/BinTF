@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.16
+# v0.19.22
 
 using Markdown
 using InteractiveUtils
@@ -70,7 +70,24 @@ begin
 	
 	plot!(notcellcounts, notcellfreq, subplot = 2, linewidth = 3, label="Empty Droplets", thickness_scaling = 1, legendfontsize=18, size=(900, 750))
 
-	savefig("Plots/Rawcounts_Inset_Plasmid_9.png")
+	# savefig("Plots/Rawcounts_Inset_Plasmid_9.png")
+end
+
+# ╔═╡ d1e47ab7-8ae7-4146-8bf1-f1b789d7cc21
+begin
+	# Splitting up the previous plot
+	plot(cellcounts, cellfreq, ylim = (0, 1), xlim=(0, cellcounts[end]), linewidth=10, label=false, tickfontsize=12, size=(500, 300))
+
+	# savefig("Plots/Rawcounts_fullaxes_Plasmid_9.png")
+end
+
+# ╔═╡ 94c8b828-8f06-4100-b6e3-49e5a8ca908b
+begin
+	plot(cellcounts, cellfreq, ylim = (0, 0.003), xlim = (0, 0.6*cellcounts[end]), linewidth = 3, label="Droplets Containing Cells", thickness_scaling = 1, xticks = [0, 100, 200], yticks=[0.000, 0.003,], tickfontsize = 12)
+	
+	plot!(notcellcounts, notcellfreq, linewidth = 3, label="Empty Droplets", thickness_scaling = 1, legendfontsize=12, size=(500, 300))
+
+	# savefig("Plots/Rawcounts_zoomedaxes_Plasmid_9.png")
 end
 
 # ╔═╡ 2a857da5-43f6-4b57-b029-10caec0127a0
@@ -122,6 +139,8 @@ end
 # ╠═b78a7fbd-3352-4472-997e-459c2cbee083
 # ╠═e987b55c-f5b9-4af2-a188-529dbd8ee197
 # ╠═0c434835-ffa5-4d0e-a165-b75b93381f16
+# ╠═d1e47ab7-8ae7-4146-8bf1-f1b789d7cc21
+# ╠═94c8b828-8f06-4100-b6e3-49e5a8ca908b
 # ╠═2a857da5-43f6-4b57-b029-10caec0127a0
 # ╠═a44c1a44-0829-4f2f-97d4-3081b43b3299
 # ╠═ff50ae47-27aa-46e4-819a-66fdd0d28c40

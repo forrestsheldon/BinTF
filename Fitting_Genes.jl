@@ -28,7 +28,18 @@ md"""
 """
 
 # ╔═╡ 02d9a29a-b282-48c2-a883-c06295f576b9
-celldf = DataFrame(CSV.File("GB_Cell_TF_counts.csv", delim="\t"))
+begin
+	replist = ["R01", "R02"]
+	condlist = ["PreAmp", "PostAmp"]
+
+	replicate = replist[1]
+	condition = condlist[1]
+	runident = "$(condition)_$(replicate)"
+
+	
+	datapath = "./Data/$(condition)_$(join(replist))"
+	celldf = DataFrame(CSV.File(joinpath(datapath, "$(runident)_CellCounts.tsv"), delim="\t"))
+end
 
 # ╔═╡ 70400124-5b17-4ad6-bddb-4a2715d0d7d2
 begin
@@ -62,11 +73,11 @@ begin
 
 	# Filter for genes with at least 200 counts greater than 10
 	for TF in TFlist
-		if sum(celldf[:, TF] .> 10) > 200
+		if sum(celldf[:, TF] .> 5) > 100
 			push!(TFkept, TF)
 		end
 	end
-	length(TFkept)
+	println("$(length(TFkept)) of $(length(TFlist)) Plasmids kept for fitting")
 end
 
 # ╔═╡ 1044643c-884f-4017-a7c8-55a129374cb9
@@ -126,10 +137,10 @@ end
 
 # 	plot!(0:testmax, pnoexlist, label="Expression", lw=2)
 	
-# 	plot!(0:testmax, taylor_expand(z->Gseq(z, testres.minimizer...), order=testmax).coeffs .+ peak*4e-3, label="Mixture", lw=2)
+# 	plot!(0:testmax, taylor_expand(z->Gseq(z, testres.minimizer...), order=testmax).coeffs, label="Mixture", lw=2)
 # 	plot!(0:testmax, taylor_expand(z->Gseq(z, MoMinitial(testcountdict, testthresh)...), order=testmax).coeffs, label="Initial", lw=2, legend=false)
 
-# 	savefig("Plots/GeneFit_Plasmid_$(testTF)_components.png")
+# 	savefig("Plots/GeneFit_$(runident)_Plasmid_$(testTF)_components.png")
 # end
 
 # ╔═╡ cbd23588-9a0f-4b99-ad6e-0c81506e25d6
@@ -138,46 +149,46 @@ md"""
 """
 
 # ╔═╡ ff816c47-ec1e-4969-ba98-585232eeca05
-begin
-	fitres = []
-	thresholds = []
+# begin
+# 	fitres = []
+# 	thresholds = []
 	
-	thresh = 10
-	lower = [0., 0., 0., 0., 0.]
-	upper = [1., 1e4, 1e4, 10, 1.]
+# 	thresh = 10
+# 	lower = [0., 0., 0., 0., 0.]
+# 	upper = [1., 1e4, 1e4, 10, 1.]
 	
-	for (TFidx, TF) in enumerate(TFkept)
-		countdict = formcountdict(TF, celldf, 0)
-		countmax = maximum(keys(countdict))
-		numcounts = sum(values(countdict))
-		counts, countfreq = formcountfreq(countdict)
+# 	for (TFidx, TF) in enumerate(TFkept)
+# 		countdict = formcountdict(TF, celldf, 0)
+# 		countmax = maximum(keys(countdict))
+# 		numcounts = sum(values(countdict))
+# 		counts, countfreq = formcountfreq(countdict)
 
-		results = fitgene_MLE(countdict, lower, upper, MoMinitial(countdict, thresh))
-		push!(fitres, results)
-		println(TF)
+# 		results = fitgene_MLE(countdict, lower, upper, MoMinitial(countdict, thresh))
+# 		push!(fitres, results)
+# 		println(TF)
 
-		νfit, γfit, μfit, rfit, ffit = results.minimizer
+# 		νfit, γfit, μfit, rfit, ffit = results.minimizer
 	
-		pnoexlist=taylor_expand(z->ffit*Gnoex(z, νfit, ffit*γfit, μfit, rfit), order=countmax).coeffs
-		peak = max(maximum(pnoexlist), 0.0015/4)
+# 		pnoexlist=taylor_expand(z->ffit*Gnoex(z, νfit, ffit*γfit, μfit, rfit), order=countmax).coeffs
+# 		peak = max(maximum(pnoexlist), 0.0015/4)
 
-		pnolist = taylor_expand(z->(1-ffit)*Gnoise(z, νfit, ffit*γfit, μfit, rfit), order=countmax).coeffs
+# 		pnolist = taylor_expand(z->(1-ffit)*Gnoise(z, νfit, ffit*γfit, μfit, rfit), order=countmax).coeffs
 
-		push!(thresholds, counts[findfirst(pnoexlist .> pnolist)])
+# 		push!(thresholds, counts[findfirst(pnoexlist .> pnolist)])
 
 
-		plot(counts, countfreq, ylim=(0, 3*peak), xlim=(0, 0.75*countmax), label="Counts", xlabel="$(TF) Count\nν=$(@sprintf("%.2g", νfit)) , γ=$(@sprintf("%.1f", γfit)) , μ=$(@sprintf("%.1f", μfit)) , r=$(@sprintf("%.3g", rfit)), f=$(@sprintf("%.2g", ffit))", ylabel="Fraction of Droplets")
+# 		plot(counts, countfreq, ylim=(0, 3*peak), xlim=(0, 0.75*countmax), label="Counts", xlabel="$(TF) Count\nν=$(@sprintf("%.2g", νfit)) , γ=$(@sprintf("%.1f", γfit)) , μ=$(@sprintf("%.1f", μfit)) , r=$(@sprintf("%.3g", rfit)), f=$(@sprintf("%.2g", ffit))", ylabel="Fraction of Droplets")
 	
-		plot!(0:countmax, pnolist, label="Noise", lw=2)
+# 		plot!(0:countmax, pnolist, label="Noise", lw=2)
 
-		plot!(0:countmax, pnoexlist, label="Expression", lw=2)
+# 		plot!(0:countmax, pnoexlist, label="Expression", lw=2)
 	
-		plot!(0:countmax, taylor_expand(z->Gseq(z, results.minimizer...), order=countmax).coeffs .+ peak*2e-2, label="Mixture", lw=2)
+# 		plot!(0:countmax, taylor_expand(z->Gseq(z, results.minimizer...), order=countmax).coeffs .+ peak*2e-2, label="Mixture", lw=2)
 
-		savefig("/Users/forrestsheldon/Dropbox/Projects/GeneBinarisation/Plots/GeneFits/$(TF)_MixtureFit_$(thresh).png")
-	end
+# 		savefig("/Users/forrestsheldon/Dropbox/Projects/GeneBinarisation/Plots/GeneFits/$(TF)_MixtureFit_$(thresh).png")
+# 	end
 	
-end
+# end
 
 # ╔═╡ 7864f60b-c61f-4e03-9952-15dd110e3304
 md"""
