@@ -39,7 +39,114 @@ begin
 	
 	datapath = "./Data/$(condition)_$(join(replist))"
 	celldf = DataFrame(CSV.File(joinpath(datapath, "$(runident)_CellCounts.tsv"), delim="\t"))
+	noBCcells = parse(Int, readline(joinpath(datapath, "$(runident)_noBCcells.txt")))
+	ddPCR = parse(Float64, readline(joinpath(datapath, "$(replicate)_ddPCR.txt")))
 end
+
+# ╔═╡ 50580bae-24ff-40c8-98f9-5600589572fc
+ddPCR
+
+# ╔═╡ 86042e1e-3ed1-4fd4-8296-8f25c61c3f16
+md"""
+### Summary Figures
+"""
+
+# ╔═╡ f5e979c8-6420-4264-9546-6bc13b92467c
+numuniqueplasmids = vcat([sum(val != 0 for val in row) for row in eachrow(celldf[:, 2:end])], zeros(Int, noBCcells))
+
+
+# ╔═╡ 7fd895c5-ad25-42c5-91ac-9c799fa3e993
+mplasmid = mean(numuniqueplasmids)
+
+# ╔═╡ fbaa1271-8f44-4725-b832-41ba96cac35f
+begin
+	hist = fit(Histogram, numuniqueplasmids, nbins=80)
+	bar(hist.edges[1][1:end-1], hist.weights, legend=false, linecolor=:match, xlim=(-0.7, hist.edges[1][end]+2), ylim=(0, 1.05*maximum(hist.weights)), size=(600, 200), tickfontsize=16, xticks=[0, 20, 40, 60], yticks=[0, 800, 1600])
+	vline!([mplasmid], line=(2, 4))
+	vline!([ddPCR], line=(:black, 4))
+
+	# Fill the region between a and b
+	fill_between_x = [ddPCR, mplasmid, mplasmid, ddPCR]
+	fill_between_y = [0, 0, 2*maximum(hist.weights), 2*maximum(hist.weights)]
+	plot!(fill_between_x, fill_between_y, fill=(0, 0.4, 1))
+	# savefig("./Plots/CopyHist_PreBin_$(condition)_$(replicate).png")
+end
+
+# ╔═╡ d8731486-2458-4a0e-8cdf-2e18b3173f57
+hist
+
+# ╔═╡ 961e4a70-882a-4b14-80e7-ec55595cd78c
+begin
+	finalcelldf = DataFrame(CSV.File(joinpath(datapath, "$(runident)_Labeled.tsv"), delim="\t"))
+	finalnumplasmids = vcat([sum(val != 0 for val in row) for row in eachrow(finalcelldf[:, 2:end])], zeros(Int, noBCcells))
+	finalmplasmid = mean(finalnumplasmids)
+end
+
+# ╔═╡ 9c41701f-1368-4778-b4d0-fd71e63c4a38
+begin
+	histfinal = fit(Histogram, finalnumplasmids, nbins=60)
+	bar(histfinal.edges[1][1:end-1], histfinal.weights, legend=false, linecolor=:match, xlim=(-0.7, 22), ylim=(0, 2200), size=(300, 200), tickfontsize=14, xticks=[0, 10, 20], yticks=[0, 1000, 2000])
+	vline!([finalmplasmid], line=(2, 4))
+	vline!([ddPCR], line=(:black, 4))
+
+	# Fill the region between a and b
+	fill_between_xfinal = [ddPCR, finalmplasmid, finalmplasmid, ddPCR]
+	fill_between_yfinal = [0, 0, 2*maximum(histfinal.weights), 2*maximum(histfinal.weights)]
+	plot!(fill_between_xfinal, fill_between_yfinal, fill=(0, 0.4, :blue))
+	# savefig("./Plots/CopyHist_PostBin_$(condition)_$(replicate).png")
+end
+
+# ╔═╡ 96f7230d-1f62-45f8-91e8-0b4f7dd28348
+begin
+	prenoisefitdf1 = DataFrame(CSV.File(joinpath("./Data/PreAmp_R01R02/", "GeneFitData", "noisefits","PreAmp_R01_Parameters.tsv"), delim="\t"))
+	postnoisefitdf1 = DataFrame(CSV.File(joinpath("./Data/PostAmp_R01R02/", "GeneFitData", "noisefits","PostAmp_R01_Parameters.tsv"), delim="\t"))
+
+	prenoisefitdf2 = DataFrame(CSV.File(joinpath("./Data/PreAmp_R01R02/", "GeneFitData", "noisefits","PreAmp_R02_Parameters.tsv"), delim="\t"))
+	postnoisefitdf2 = DataFrame(CSV.File(joinpath("./Data/PostAmp_R01R02/", "GeneFitData", "noisefits","PostAmp_R02_Parameters.tsv"), delim="\t"))
+end
+
+# ╔═╡ ff72b3c2-c4e1-458a-9f57-34fbcd694327
+begin
+	preνvalues1 = Vector(prenoisefitdf1[1,:])
+	preγvalues1 = Vector(prenoisefitdf1[2,:])
+
+	scatter(preνvalues1, preγvalues1, markerstrokecolor=:auto)
+
+	preνvalues2 = Vector(prenoisefitdf2[1,:])
+	preγvalues2 = Vector(prenoisefitdf2[2,:])
+
+	scatter!(preνvalues2, preγvalues2, markerstrokecolor=:auto)
+end
+
+# ╔═╡ b98ae866-3d06-4126-b58d-537eaab6b504
+begin
+	postνvalues1 = Vector(postnoisefitdf1[1,:])
+	postγvalues1 = Vector(postnoisefitdf1[2,:])
+	
+	scatter(postνvalues1, postγvalues1, markerstrokecolor=:auto)
+
+	postνvalues2 = Vector(postnoisefitdf2[1,:])
+	postγvalues2 = Vector(postnoisefitdf2[2,:])
+	
+	scatter!(postνvalues2, postγvalues2, markerstrokecolor=:auto)
+end
+
+# ╔═╡ 09fbc6b9-94e4-4109-9173-571bf648f35a
+begin
+	scatter(preνvalues1, preγvalues1, markerstrokecolor=:auto, color=1, label="Replicate 1" )
+	scatter!(postνvalues1, postγvalues1, markerstrokecolor=:auto, xscale=:log10, yscale=:log10, color = 1, label=:none)
+
+	scatter!(preνvalues2, preγvalues2, markerstrokecolor=:auto, color=2, label="Replicate 2" )
+	scatter!(postνvalues2, postγvalues2, markerstrokecolor=:auto, color = 2, label=:none, tickfontsize=15)
+	
+	
+	
+end
+
+# ╔═╡ 6377a680-8d8e-4675-858f-427bb75db022
+md"""
+### Count Figures
+"""
 
 # ╔═╡ 70400124-5b17-4ad6-bddb-4a2715d0d7d2
 begin
@@ -73,7 +180,7 @@ begin
 
 	# Filter for genes with at least 200 counts greater than 10
 	for TF in TFlist
-		if sum(celldf[:, TF] .> 5) > 100
+		if sum(celldf[:, TF] .> 10) > 200
 			push!(TFkept, TF)
 		end
 	end
@@ -87,7 +194,7 @@ md"""
 
 # ╔═╡ fdcea879-6ae0-4e74-b931-934e551f2fed
 begin
-	testTF = TFkept[3]
+	testTF = TFkept[12]
 	testcountdict = formcountdict(testTF, celldf, 0)
 	testmax = maximum(keys(testcountdict))
 	testnumcounts = sum(values(testcountdict))
@@ -97,31 +204,70 @@ end
 # ╔═╡ 725a2c87-b9c3-418c-8fc1-48c448713400
 plot(testcounts, testcountfreq, ylim=(0, 0.003), label=false, xlabel="Counts", ylabel="Frequency")
 
-# ╔═╡ 31d069e8-3838-4686-9f05-8ae423f70c47
+# ╔═╡ dce8b0ee-6bf9-41da-8096-30cf02139cbc
 begin
-	testlower = [0., 0., 0., 0., 0.]
-	testupper = [1., 1e4, 1e4, 10, 1.]
-	testthresh = 10
-	
-	testres = fitgene_MLE(testcountdict, testlower, testupper, MoMinitial(testcountdict, testthresh))
+	plotTF = TFkept[9]
+	plotcountdict = formcountdict(plotTF, celldf, 0)
+	plotmax = maximum(keys(plotcountdict))
+	plotnumcounts = sum(values(plotcountdict))
+	plotcounts, plotcountfreq = formcountfreq(plotcountdict)
 end
+
+# ╔═╡ 4f3b95e9-ca2a-41c8-a0e8-4a149642e4b8
+begin
+	plot(plotcounts, plotcountfreq, ylim=(0, 1), xlim=(0, plotmax+10), label=false, color = 1, lw=10, tickfontsize=16)
+	# savefig("./Plots/AllCounts_9.png")
+end
+
+# ╔═╡ 41929758-8a1a-4e5d-8078-36e715fbb2a9
+begin
+	plot(plotcounts[1:6], plotcountfreq[1:6], fillrange=0, fillalpha=0.3, fillcolor=1, label=false)
+	plot!(plotcounts, plotcountfreq, ylim=(0, 0.008), xlim=(0, 130), label=false, color = 1, lw=4, tickfontsize=16, xticks = [0, 100], yticks=[0.0, 0.004, 0.008])
+	# savefig("./Plots/CountsZoomed_9.png")
+end
+
+# ╔═╡ eb493270-6eec-4883-9237-c0b8862a332b
+
+
+# ╔═╡ 31d069e8-3838-4686-9f05-8ae423f70c47
+# begin
+# 	testlower = [0., 0., 0., 0., 0.]
+# 	testupper = [1., 1e4, 1e4, 10, 1.]
+# 	testthresh = 10
+	
+# 	testres = fitgene_MLE(testcountdict, testlower, testupper, MoMinitial(testcountdict, testthresh))
+# end
 
 # ╔═╡ 426cd89c-25de-4c59-98cd-a0a976adf186
-begin
-	νfit, γfit, μfit, rfit, ffit = testres.minimizer
+# begin
+# 	νi, γi, μi, ri, fi = MoMinitial(testcountdict, testthresh)
+# 	gnoi(z) = Gnoise(z, νi, fi*γi, μi, ri)
+# 	gexi(z) = GNB(z, μi, ri)
+#     gnoexi(z) = gexi(z)*gnoi(z)
+#     gseqi(z) = fi*gnoexi(z) + (1-fi)*gnoi(z)
 	
-	pnoexlist=taylor_expand(z->ffit*Gnoex(z, νfit, ffit*γfit, μfit, rfit), order=testmax).coeffs
-	peak = max(maximum(pnoexlist), 0.0015/4)
+# 	ν, γ, μ, r, f = testres.minimizer
 
-	plot(testcounts, testcountfreq, ylim=(0, 0.003), xlim=(0, 0.75*testmax), label="Counts", xlabel="$(testTF) Count\nν=$(@sprintf("%.3g", νfit)) , γ=$(@sprintf("%.1f", γfit)) , μ=$(@sprintf("%.1f", μfit)) , r=$(@sprintf("%.3g", rfit)), f=$(@sprintf("%.3g", ffit))", ylabel="Fraction of Droplets")
-	
-	plot!(0:testmax, taylor_expand(z->(1-ffit)*Gnoise(z, νfit, ffit*γfit, μfit, rfit), order=testmax).coeffs, label="Noise", lw=2)
+# 	gno(z) = Gnoise(z, ν, f*γ, μ, r)
+# 	gex(z) = GNB(z, μ, r)
+#     gnoex(z) = gex(z)*gno(z)
+#     gseq(z) = f*gnoex(z) + (1-f)*gno(z)
 
-	plot!(0:testmax, pnoexlist, label="Expression", lw=2)
 	
-	plot!(0:testmax, taylor_expand(z->Gseq(z, testres.minimizer...), order=testmax).coeffs .+ peak*2e-2, label="Mixture", lw=2)
-	plot!(0:testmax, taylor_expand(z->Gseq(z, MoMinitial(testcountdict, testthresh)...), order=testmax).coeffs, label="Initial", lw=2)
-end
+	
+# 	pnoexlist=taylor_expand(z->f*gnoex(z), order=testmax).coeffs
+# 	peak = max(maximum(pnoexlist), 0.0015/4)
+
+# 	plot(testcounts, testcountfreq, ylim=(0, 0.003), xlim=(0, 0.75*testmax), label="Counts", xlabel="$(testTF) Count\nν=$(@sprintf("%.3g", ν)) , γ=$(@sprintf("%.1f", γ)) , μ=$(@sprintf("%.1f", μ)) , r=$(@sprintf("%.3g", r)), f=$(@sprintf("%.3g", f))", ylabel="Fraction of Droplets")
+	
+# 	plot!(0:testmax, taylor_expand(z->(1-f)*gno(z), order=testmax).coeffs, label="Noise", lw=2)
+
+# 	plot!(0:testmax, pnoexlist, label="Expression", lw=2)
+	
+# 	plot!(0:testmax, taylor_expand(z->gseq(z), order=testmax).coeffs .+ peak*2e-2, label="Mixture", lw=2)
+	
+# 	# plot!(0:testmax, taylor_expand(z->Gseq(z, MoMinitial(testcountdict, testthresh)...), order=testmax).coeffs, label="Initial", lw=2)
+# end
 
 # ╔═╡ af7132a5-7f3a-4c84-a093-c403387016d7
 # begin
@@ -319,12 +465,29 @@ end
 # ╠═7eb6af35-b356-4b9d-a203-22913e239eab
 # ╟─adffddb0-d063-490a-a17d-4587fa350749
 # ╠═02d9a29a-b282-48c2-a883-c06295f576b9
+# ╠═50580bae-24ff-40c8-98f9-5600589572fc
+# ╟─86042e1e-3ed1-4fd4-8296-8f25c61c3f16
+# ╠═f5e979c8-6420-4264-9546-6bc13b92467c
+# ╠═7fd895c5-ad25-42c5-91ac-9c799fa3e993
+# ╠═fbaa1271-8f44-4725-b832-41ba96cac35f
+# ╠═d8731486-2458-4a0e-8cdf-2e18b3173f57
+# ╠═961e4a70-882a-4b14-80e7-ec55595cd78c
+# ╠═9c41701f-1368-4778-b4d0-fd71e63c4a38
+# ╠═96f7230d-1f62-45f8-91e8-0b4f7dd28348
+# ╠═ff72b3c2-c4e1-458a-9f57-34fbcd694327
+# ╠═b98ae866-3d06-4126-b58d-537eaab6b504
+# ╠═09fbc6b9-94e4-4109-9173-571bf648f35a
+# ╟─6377a680-8d8e-4675-858f-427bb75db022
 # ╠═70400124-5b17-4ad6-bddb-4a2715d0d7d2
 # ╠═7b028b95-79ee-4133-a986-64be7579c1df
 # ╠═127cd7d8-241d-40ff-a9f6-5e2e2f307d56
 # ╟─1044643c-884f-4017-a7c8-55a129374cb9
 # ╠═fdcea879-6ae0-4e74-b931-934e551f2fed
 # ╠═725a2c87-b9c3-418c-8fc1-48c448713400
+# ╠═dce8b0ee-6bf9-41da-8096-30cf02139cbc
+# ╠═4f3b95e9-ca2a-41c8-a0e8-4a149642e4b8
+# ╠═41929758-8a1a-4e5d-8078-36e715fbb2a9
+# ╠═eb493270-6eec-4883-9237-c0b8862a332b
 # ╠═31d069e8-3838-4686-9f05-8ae423f70c47
 # ╠═426cd89c-25de-4c59-98cd-a0a976adf186
 # ╠═af7132a5-7f3a-4c84-a093-c403387016d7

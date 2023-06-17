@@ -13,15 +13,18 @@ def count_nonzeros(row, selected_plasmids):
     # Count non-zero entries for selected plasmids
     return np.count_nonzero(row[selected_plasmids])
 
-def create_histogram(df, selected_plasmids):
+def create_histogram(df, selected_plasmids, numempty):
     # Add a new column 'nonzero_count' to the DataFrame
     df['nonzero_count'] = df.apply(count_nonzeros, axis=1, args=(selected_plasmids,))
 
+    # Create a new array that includes the non-zero counts and the specified number of zeros
+    counts_with_zeros = np.concatenate([df['nonzero_count'].values, np.zeros(numempty)])
+
     # Create a histogram using Plotly
-    fig = go.Figure(data=[go.Histogram(x=df['nonzero_count'])])
+    fig = go.Figure(data=[go.Histogram(x=counts_with_zeros)])
 
     # Calculate and print the average
-    avg = df['nonzero_count'].mean()
+    avg = counts_with_zeros.mean()
     st.write(f"Mean Unique Plasmids from SCseq: {avg:.2f}")
 
     # Add a vertical line for the average
@@ -49,6 +52,9 @@ def app(datadir, rep, cond):
 
     with open(os.path.join(datadir, f"{rep}_ddPCR.txt"), 'r') as file:
         ddPCR = float(file.read())
+
+    with open(os.path.join(datadir, f"{cond}_{rep}_noBCcells.txt"), 'r') as file:
+        noBCcells = int(file.read())
     
     st.write(f"Mean number of insertions from ddPCR: {ddPCR}\n")
 
@@ -61,7 +67,7 @@ def app(datadir, rep, cond):
     plasmid_cols = df.columns[1:]
 
     # Create histogram
-    fig = create_histogram(df, plasmid_cols)
+    fig = create_histogram(df, plasmid_cols, noBCcells)
 
     # Display plot
     st.plotly_chart(fig)
