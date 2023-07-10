@@ -83,7 +83,7 @@ for BC in keptBC
     print("Beginning Fit for $(BC):")
     celldict = cellcountdicts[BC]
     
-    νi, γi, μi, ri, fi = MoMinitial(celldict, initialthresh)
+    νi, γi, ρμi, αi, fi = MoMinitial(celldict, initialthresh)
 
     totalcellcounts = sum(values(celldict))
     # totalemptycounts = sum(values(emptydict))
@@ -91,10 +91,10 @@ for BC in keptBC
     fmax = (totalcellcounts - celldict[0] + celldict[1])/totalcellcounts
     
 
-    # [ν, γ, μ, r, f]
+    # [ν, γ, ρμ, α, f]
     lower = [0., 0., 0., 0., 0.]
     upper = [1., 1e3, 1e3, 10, fmax]
-    initial = [νi, γi, μi, ri, fi]
+    initial = [νi, γi,ρμi, αi, fi]
 
     # fitting occurs here
     try
@@ -102,17 +102,18 @@ for BC in keptBC
         
         println("\tFit complete. Generating outputs")
         # Generate outputs from fit
-        ν, γ, μ, r, f = fitresults.minimizer
-        gno(z) = Gnoise(z, ν, f*γ, μ, r)
-
+        ν, γ, ρμ, α, f = fitresults.minimizer
+        
         # mixture fitting
         cellcountvec, cellcountfreq = formcountfreq(celldict)
-        gex(z) = GNB(z, μ, r)
-        gnoex(z) = gex(z)*gno(z)
-        gseq(z) = f*gnoex(z) + (1-f)*gno(z)
-        pnoexlist = taylor_expand(gnoex, order = cellcountvec[end]).coeffs
+        gex(z) = GNB(z, ρμ, α)
+        gexν(z) = GNB(z, ρμ*ν, α)
+        gcont(z) = Gpois(gexν(z), f*γ)
+        gseq(z) = gcont(z)*(f*gex(z) + (1-f))
+
+        pnoexlist = taylor_expand(z->gcont(z)*gex(z), order = cellcountvec[end]).coeffs
         pseqlist = taylor_expand(gseq, order = cellcountvec[end]).coeffs
-        pnolistlong = taylor_expand(gno, order = cellcountvec[end]).coeffs
+        pnolistlong = taylor_expand(gcont, order = cellcountvec[end]).coeffs
         
         threshold = cellcountvec[findfirst(f.*pnoexlist[1:length(cellcountvec)] .> (1-f).*pnolistlong[1:length(cellcountvec)])]	
         #save the parameters in a dataframe with genes across columns and parameters in rows
@@ -123,7 +124,7 @@ for BC in keptBC
         mixturefitdf = DataFrame()
         
         mixturefitdf[!, BC] = cellcountfreq
-        mixturefitdf[!, BC*"_noise"] = (1-f).*pnolistlong
+        mixturefitdf[!, BC*"_contaminant"] = (1-f).*pnolistlong
         mixturefitdf[!, BC*"_expression"] = f.*pnoexlist
         mixturefitdf[!, BC*"_mixture"] = pseqlist
 

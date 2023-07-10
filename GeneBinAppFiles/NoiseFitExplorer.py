@@ -18,6 +18,9 @@ def app(datadir, rep, cond):
 
     def get_mixture_path(rep, cond, gene):
         return os.path.join(fitdir, f"{cond}_{rep}_MixtureFit_{gene}.tsv")
+    
+    def get_param_path(rep, cond):
+        return os.path.join(fitdir, f"{cond}_{rep}_Parameters.tsv")
 
     def load_tsv_file(file_path):
         return pd.read_csv(file_path, sep='\t')
@@ -28,18 +31,23 @@ def app(datadir, rep, cond):
     st.title("Noise Fit Explorer")
     st.write("Examine Noise Fits for high count genes and remove any that seem to be problematic.")
 
+    paramdf = load_tsv_file(get_param_path(rep, cond))
+    st.dataframe(paramdf)
 
     #####################
     # Select Genes for Fit
     #####################
-    # Pull gene list by first finding all the mixture fit files
-    mixture_file_pattern = f"{cond}_{rep}_MixtureFit_*.tsv"
-    mixture_file_list = glob.glob(os.path.join(fitdir, mixture_file_pattern))
+    # # Pull gene list by first finding all the mixture fit files
+    # mixture_file_pattern = f"{cond}_{rep}_MixtureFit_*.tsv"
+    # mixture_file_list = glob.glob(os.path.join(fitdir, mixture_file_pattern))
 
-    # Regular expression pattern to extract the wildcard part
-    mixture_pattern = fr'{cond}_{rep}_MixtureFit_(.+)\.tsv'
+    # # Regular expression pattern to extract the wildcard part
+    # mixture_pattern = fr'{cond}_{rep}_MixtureFit_(.+)\.tsv'
 
-    gene_list = [re.search(mixture_pattern, os.path.basename(file)).group(1) for file in mixture_file_list]
+    # gene_list = [re.search(mixture_pattern, os.path.basename(file)).group(1) for file in mixture_file_list]
+    # gene_list.sort()
+
+    gene_list = paramdf.columns.tolist()
     gene_list.sort()
 
     # Create a list of checkboxes in the sidebar
@@ -89,3 +97,7 @@ def app(datadir, rep, cond):
 
     st.title("Mixture Fit")
     st.write(mix_fig)
+
+
+
+

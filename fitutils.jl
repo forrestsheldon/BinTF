@@ -19,65 +19,61 @@ function formcountfreq(countdict)
 end
 
 function MoMinitial(countdict, thresh)
-    x1i = 0
-    x2i = 0
+    E1i = 0
+    E2i = 0
     nxi = 0
-    y1i = 0
-    y2i = 0
+    C1i = 0
+    C2i = 0
     nyi = 0
     
     for (c, nc) in countdict
         if c < thresh
-            y1i += nc*c
-            y2i += nc*c^2
+            C1i += nc*c
+            C2i += nc*c^2
             nyi += nc
         else
-            x1i += nc*c
-            x2i += nc*c^2
+            E1i += nc*c
+            E2i += nc*c^2
             nxi += nc
         end
     end
-    x1i = x1i/nxi
-    x2i = x2i/nxi
-    y1i = y1i/nyi
-    y2i = y2i/nyi
+    E1i = E1i/nxi
+    E2i = E2i/nxi
+    C1i = C1i/nyi
+    C2i = C2i/nyi
 
     fi = nxi / (nxi + nyi)
     
-    μi = x1i
-    ri = 1/(x2i/x1i^2 - 1)
-    γi = (1/fi)*(x2i/x1i^2)*y1i^2/(y2i-y1i^2)
-    νi = x1i/x2i*(y2i-y1i^2)/y1i
+    ρμi = E1i
+    αi = (E2i - E1i)/E1i^2 - 1
+
+    γi = (1/fi)*(C1i/E1i)^2*(E2i-E1i)/(C2i-C1i-C1i^2)
+    νi = E1i/C1i*(C2i-C1i^2-C1i)/(E2i-E1i)
     
 
-    [νi, γi, μi, ri, fi]
+    [νi, γi, ρμi, αi, fi]
 end
 
-function GNB(z, μ, r)
-    1/(1-(μ/r)*(z-1))^r
+function GNB(z, μ, α)
+    1/(1-(α*μ)*(z-1))^(1/α)
 end
 
 function Gpois(z, λ)
     exp(λ*(z-1))
 end
 
-function Gnoise(z, ν, γ, μ, r)
-    gν(z) = Gpois(z, ν)
-    gex(z) = GNB(z, μ, r)
-    return Gpois(gex(gν(z)), γ)
-end
 
 function fitgene_MLE(countdict, lower, upper, initial)
     maxcount = maximum(keys(countdict))
     sumcounts = sum(nc for (c, nc) in countdict)
 
     function objective(param)
-        ν, γ, μ, r, f = param
-        gν(z) = Gpois(z, ν)
-        gex(z) = GNB(z, μ, r)
-        gno(z) = Gpois(gex(gν(z)), f*γ)
-        gnoex(z) = gex(z)*gno(z)
-        gseq(z) = f*gnoex(z) + (1-f)*gno(z)
+        ν, γ, ρμ, α, f = param
+
+        gex(z) = GNB(z, ρμ, α)
+        gexν(z) = GNB(z, ρμ*ν, α)
+        gcont(z) = Gpois(gexν(z), f*γ)
+        gseq(z) = gcont(z)*(f*gex(z) + (1-f))
 
         plist = taylor_expand(gseq, order = maxcount).coeffs
         plist[plist .< 0] .= eps(typeof(plist[1]))

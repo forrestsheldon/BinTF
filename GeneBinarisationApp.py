@@ -4,7 +4,6 @@ import streamlit as st
 import GeneBinAppFiles.Hist as Hist
 import GeneBinAppFiles.RawCounts as RawCounts
 import GeneBinAppFiles.NaiveLabels as NaiveLabels
-import GeneBinAppFiles.CompareRepsInitial as CompareRepsInitial
 import GeneBinAppFiles.NoiseFitExplorer as NoiseFitExplorer
 import GeneBinAppFiles.SelectNoiseParameters as SelectNoiseParameters
 import GeneBinAppFiles.CheckFits as CheckFits
@@ -32,7 +31,6 @@ def main():
         "Make Histograms": Hist,
         "Naive Labels": NaiveLabels,
         "Examine Raw Counts": RawCounts,
-        "Compare Replicates": CompareRepsInitial,
         "Select Noise Fit Genes": NoiseFitExplorer,
         "Fit Noise Parameter": SelectNoiseParameters,
         "Check Fits": CheckFits,

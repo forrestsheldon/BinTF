@@ -6,8 +6,9 @@ def app(datadir, rep, cond):
     st.title("Make Histograms")
     st.text("This will bin counts to allow plotting and fitting.")
     st.text("""For these scripts to run, they need access to condition.txt which gives
-the condition for the screen, e.g.
+the conditions for the screen, e.g.
 \tPreAmp
+\tPostAmp
 replicates.txt which is a list of replicates e.g.
 \tR01
 \tR02
@@ -15,7 +16,6 @@ and pathinfo.txt which contains the path to the data e.g.
 \t/path/Data/
 which will assume that the count data is in tab separated files like,
 \t/path/Data/PreAmp_R01R02/PreAmp_R01_CellCounts.tsv
-\t/path/Data/PreAmp_R01R02/PreAmp_R01_EmptyCounts.tsv
 \t/path/Data/PreAmp_R01R02/PreAmp_R01_ZeroCounts.txt
 with corresponding R02 files.
 

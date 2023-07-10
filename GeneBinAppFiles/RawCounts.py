@@ -16,26 +16,26 @@ def app(datadir, rep, cond):
     # Data is histogram files
     histdir = os.path.join(datadir, "GeneFitData", "counthistograms")
 
-    filesuffixes = ["cell_count_histograms.tsv", "emptydroplet_count_histograms.tsv"]
 
     #####################
     # Functions
     #####################
-    def get_file_path(rep, cond, file_suffix):
-        return os.path.join(histdir, f"{cond}_{rep}_{file_suffix}")
+    def get_file_path(rep, cond):
+        return os.path.join(histdir, f"{cond}_{rep}_cell_count_histograms.tsv")
 
     def load_tsv_file(file_path):
         return pd.read_csv(file_path, sep='\t')
 
-    def plot_data(df_cell, df_droplet, selected_columns, normalize):
-        df_plot = pd.concat([df_cell[selected_columns].reset_index(), df_droplet[selected_columns].reset_index()], keys=['cell', 'droplet'], names=['type']).reset_index()
+    def plot_data(df_cell, selected_columns, normalize):
+        df_plot = df_cell[selected_columns].reset_index()
         
         if normalize:
             df_plot[selected_columns] = df_plot[selected_columns].div(df_plot[selected_columns].sum(axis=0), axis=1)
 
-        fig = px.line(df_plot, x="index", y=selected_columns, color='type', title="Line Plot of Selected Columns", hover_data=["type"])
+        fig = px.line(df_plot, x="index", y=selected_columns, title="Line Plot of Selected Columns")
 
         return fig
+
     
     #####################
     # Pick which run to Plot
@@ -44,11 +44,9 @@ def app(datadir, rep, cond):
     st.write("Check counts for anomalous genes and make note of special cases. Zoom axes using controls in the sidebar.")
  
 
-    file_path_cell = get_file_path(rep, cond, filesuffixes[0])
-    file_path_droplet = get_file_path(rep, cond, filesuffixes[1])
+    file_path_cell = get_file_path(rep, cond)
 
     df_cell = load_tsv_file(file_path_cell)
-    df_droplet = load_tsv_file(file_path_droplet)
 
     columns = df_cell.columns.tolist()
 
@@ -63,7 +61,7 @@ def app(datadir, rep, cond):
         normalize = st.sidebar.checkbox("Normalize by sum")
 
         # Prepare data for the plot
-        fig = plot_data(df_cell, df_droplet, selected_columns, normalize)
+        fig = plot_data(df_cell, selected_columns, normalize)
 
         if normalize:
             step_size = 0.0001
@@ -71,7 +69,7 @@ def app(datadir, rep, cond):
             fmtstring = "%.3f"
         else:
             step_size = 1
-            y_min, y_max = 0, max(df_cell.max().max(), df_droplet.max().max())
+            y_min, y_max = 0, df_cell.max().max()
             fmtstring="%d"
 
         x_min, x_max = st.sidebar.number_input("X-axis min value:", value=df_cell.index.min(), step=1), st.sidebar.number_input("X-axis max value:", value=df_cell.index.max(), step=1)
