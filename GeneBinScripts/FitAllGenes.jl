@@ -26,8 +26,7 @@ cellhistpath = joinpath(datapath, "counthistograms", "$(cond)_$(rep)_cell_count_
 # Parameters for run
 #######################################################
 
-# to fit the global noise parameters keep only the genes with at least
-# excludedcounts counts >= excludedthresh
+# to check which threshold to use in MoM
 excludedthresh = 6
 excludedcounts = 30
 
@@ -41,28 +40,14 @@ lowthresh = 2
 #######################################################
 runident = "$(cond)_$(rep)"
 # Load the Noise Constant set by the last fit
-ν_const, γ_const = [parse(Float64, s) for s in readlines(joinpath(datapath, "noisefits", runident*"_NoiseParameters.txt"))]
-νγ_const = ν_const*γ_const
-
-########
-# Alternative Noise parameters
-regparam = [parse(Float64, s) for s in readlines(joinpath(datapath, "noisefits", runident*"_NoiseParameters2.txt"))]
+contparam = [parse(Float64, s) for s in readlines(joinpath(datapath, "contaminantfits", runident*"_ContaminantParameters.txt"))]
+γ_const, γ_MAD, νγ_const, νγ_MAD = contparam
 
 # Load Data
 println("Loading data for $(cond) $(rep)")
 cellhistogramdf = DataFrame(CSV.File(cellhistpath))
 
 BClist = names(cellhistogramdf)
-# keptBC = []
-# for BC in BClist
-#     cellcounts = cellhistogramdf[!, BC]
-#     if sum(cellcounts[excludedthresh+1:end]) > excludedcounts
-#         push!(keptBC, BC)
-#     else
-#         println("$(BC) excluded for insufficient counts")
-#     end
-# end
-# println("Found $(length(keptBC)) barcodes with $(excludedcounts) counts over $(excludedthresh-1) for fitting")
 
 
 # Move dataframe vectors to dictionaries
@@ -99,7 +84,7 @@ for BC in BClist
         momthresh = lowthresh
     end
 
-    νi, γi, μi, ri, fi = MoMinitial(celldict, momthresh)
+    νi, γi, ρμi, αi, fi = MoMinitial(celldict, momthresh)
     
     
     totalcounts = sum(values(celldict))
@@ -113,48 +98,43 @@ for BC in BClist
         end
     end
 
-    # # [ν, μ, r, f]
-    # lower = [1e-4, 0., 0., 0.]
-    # upper = [1., 1e3, 100, fmax]
-    # initial = [νγ_const/γi, μi, ri, fi]
 
-     # [ν, γ, μ, r, f]
+     # [ν, γ, μ, α, f]
      lower = [0., 0., 0., 0., 0.]
      upper = [1., 1e3, 1e3, 10, fmax]
-     initial = [ν_const, γ_const, min(μi, 100.), min(ri, 5.), fi]
+     initial = [νγ_const/γ_const, γ_const, min(ρμi, 100.), min(αi, 5.), fi]
     
     # fitting occurs here
     try
-        # fitresults = fitgene_MLE_νγ(celldict, νγ_const, lower, upper, initial)
-        fitresults = fitgene_MLE_reg(celldict, regparam, lower, upper, initial)
+        fitresults = fitgene_MLE_reg(celldict, contparam, lower, upper, initial)
 
         print("Fit complete. Generating outputs. ")
         # Generate outputs from fit
-        # ν, μ, r, f = fitresults.minimizer
-        # γ = νγ_const/ν
-        ν, γ, μ, r, f = fitresults.minimizer
-        gnof(z) = Gnoise(z, ν, f*γ, μ, r)
+ 
+        ν, γ, ρμ, α, f = fitresults.minimizer
+
+        gex(z) = GNB(z, ρμ, α)
+        gexν(z) = GNB(z, ρμ*ν, α)
+        gcont(z) = Gpois(gexν(z), f*γ)
+        gseq(z) = gcont(z)*(f*gex(z) + (1-f))
                 
         # mixture fits
         cellcountvec, cellcountfreq = formcountfreq(celldict)
-        gexf(z) = GNB(z, μ, r)
-        gnoexf(z) = gexf(z)*gnof(z)
-        gseqf(z) = f*gnoexf(z) + (1-f)*gnof(z)
-        pnoexflist = taylor_expand(gnoexf, order = cellcountvec[end]).coeffs
-        pseqflist = taylor_expand(gseqf, order = cellcountvec[end]).coeffs
-        pnoflistlong = taylor_expand(gnof, order = cellcountvec[end]).coeffs
+        pnoexlist = taylor_expand(z->gcont(z)*gex(z), order = cellcountvec[end]).coeffs
+        pseqlist = taylor_expand(gseq, order = cellcountvec[end]).coeffs
+        pnolistlong = taylor_expand(gcont, order = cellcountvec[end]).coeffs
         
-        threshold = cellcountvec[findfirst(f.*pnoexflist[1:length(cellcountvec)] .> (1-f).*pnoflistlong[1:length(cellcountvec)])]
+        threshold = cellcountvec[findfirst(f.*pnoexlist[1:length(cellcountvec)] .> (1-f).*pnolistlong[1:length(cellcountvec)])]
 
         #save the parameters in a dataframe with genes across columns and parameters in rows
-        parameterdf[!, BC] = [ν, γ, μ, r, f, threshold]
+        parameterdf[!, BC] = [ν, γ, ρμ, α, f, threshold]
         
         # for plotting, save each barcode fit in different dataframes
         mixturefitdf = DataFrame()        
         mixturefitdf[!, BC] = cellcountfreq
-        mixturefitdf[!, BC*"_noise"] = (1-f).*pnoflistlong
-        mixturefitdf[!, BC*"_expression"] = f.*pnoexflist
-        mixturefitdf[!, BC*"_mixture"] = pseqflist
+        mixturefitdf[!, BC*"_noise"] = (1-f).*pnolistlong
+        mixturefitdf[!, BC*"_expression"] = f.*pnoexlist
+        mixturefitdf[!, BC*"_mixture"] = pseqlist
         
         CSV.write(joinpath(outputpath, runident*"_MixtureFit_$(BC).tsv"), mixturefitdf, delim='\t')
         println(" Outputs saved.")

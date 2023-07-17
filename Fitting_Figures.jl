@@ -66,11 +66,11 @@ md"""
 
 # ╔═╡ 96f7230d-1f62-45f8-91e8-0b4f7dd28348
 begin
-	pre1noisefitdf = DataFrame(CSV.File(joinpath("./Data/PreAmp_R01R02/", "GeneFitData", "noisefits","PreAmp_R01_Parameters.tsv"), delim="\t"))
-	post1noisefitdf = DataFrame(CSV.File(joinpath("./Data/PostAmp_R01R02/", "GeneFitData", "noisefits","PostAmp_R01_Parameters.tsv"), delim="\t"))
+	pre1noisefitdf = DataFrame(CSV.File(joinpath("./Data/PreAmp_R01R02/", "GeneFitData", "contaminantfits","PreAmp_R01_Parameters.tsv"), delim="\t"))
+	post1noisefitdf = DataFrame(CSV.File(joinpath("./Data/PostAmp_R01R02/", "GeneFitData", "contaminantfits","PostAmp_R01_Parameters.tsv"), delim="\t"))
 
-	pre2noisefitdf = DataFrame(CSV.File(joinpath("./Data/PreAmp_R01R02/", "GeneFitData", "noisefits","PreAmp_R02_Parameters.tsv"), delim="\t"))
-	post2noisefitdf = DataFrame(CSV.File(joinpath("./Data/PostAmp_R01R02/", "GeneFitData", "noisefits","PostAmp_R02_Parameters.tsv"), delim="\t"))
+	pre2noisefitdf = DataFrame(CSV.File(joinpath("./Data/PreAmp_R01R02/", "GeneFitData", "contaminantfits","PreAmp_R02_Parameters.tsv"), delim="\t"))
+	post2noisefitdf = DataFrame(CSV.File(joinpath("./Data/PostAmp_R01R02/", "GeneFitData", "contaminantfits","PostAmp_R02_Parameters.tsv"), delim="\t"))
 end
 
 # ╔═╡ 4778354d-4208-4b65-ba8f-67f5f86233b9
@@ -127,12 +127,12 @@ myoranges = cgrad([get(orangegrad, 0.1), colorpalette[2], get(orangegrad, 0.8)])
 
 # ╔═╡ ff72b3c2-c4e1-458a-9f57-34fbcd694327
 begin
-	scatter(pre1νvalues, pre1γvalues, markerstrokecolor=:auto)
+	scatter(pre1νvalues, pre1γvalues, markerstrokecolor=:auto, label="Replicate 1")
 	linebounds = 10^-4:10^-5:0.0047
-	plot!(linebounds, pre1prod./linebounds, color=1, lw=2)
+	plot!(linebounds, pre1prod./linebounds, color=1, lw=2, label=false)
 
-	scatter!(pre2νvalues, pre2γvalues, color=2, markerstrokecolor=:auto, legend=false, tickfontsize=16, xticks=[0, 0.002, 0.004], yticks=[0, 50, 100, 150, 200], xlim=[0, 0.005], ylim = [0, 200], size=(1000, 600))
-	plot!(linebounds, pre2prod./linebounds, color=2, lw=2)
+	scatter!(pre2νvalues, pre2γvalues, color=2, markerstrokecolor=:auto, label="Replicate 2", tickfontsize=16, xticks=[0, 0.002, 0.004], yticks=[0, 100, 200], xlim=[0, 0.005], ylim = [0, 200], size=(600, 350))
+	plot!(linebounds, pre2prod./linebounds, color=2, lw=2, label=false, legendfontsize=12)
 	# savefig("./Plots/PreScatter.png")
 end
 
@@ -182,6 +182,12 @@ begin
 	scatter!(1 ./pre2numcounts, pre2γvalues, xlim=(0, 0.00011), ylim=(0, 100), markerstrokewidth=0)
 end
 
+# ╔═╡ 78ca2110-df58-4032-a5f5-21d6a9fcae59
+median(pre1γvalues), median(pre2γvalues)
+
+# ╔═╡ 7413114d-0fa4-4269-abad-8c7cee21caf2
+
+
 # ╔═╡ c9b28149-b848-4cae-8de7-70533628c7dd
 begin
 	scatter(1 ./pre1numcounts, pre1νvalues, markerstrokewidth=0)
@@ -196,6 +202,9 @@ begin
 	scatter!(post2νvalues, post2γvalues, markerstrokecolor=:auto)
 end
 
+# ╔═╡ d35b5774-cb3d-4214-9a70-48dbad96ca84
+median(post1γvalues), median(post2γvalues)
+
 # ╔═╡ 054d8a56-a86d-4883-be0e-901b01893570
 begin
 	post1numcounts = sum.(eachcol(post1celldf[!,post1names]))
@@ -206,6 +215,9 @@ begin
 	
 	scatter(post1νvalues[post1perm], post1γvalues[post1perm], zcolor=log.(post1numcounts[post1perm]), colorbar=false, c=myblues, markerstrokewidth=0)
 end
+
+# ╔═╡ 63436721-a35f-4e0a-a2b2-318282702677
+post2perm
 
 # ╔═╡ 7c28ffc9-3720-4808-ae17-cabad2d89c68
 begin
@@ -238,13 +250,13 @@ begin
 	scatter(pre1νvalues[pre1perm], pre1γvalues[pre1perm], label=nothing, zcolor=log.(pre1numcounts[pre1perm]), color=myblues, markerstrokewidth=0)
 	pre1linebounds = [1.1*10^-4, 4*10^-3]
 	plot!(pre1linebounds, pre1prod./pre1linebounds, color = 1, lw=2, xlim=(8*10^-5, 2*10^-2), ylim=(6, 2.5*10^2), label=:none)
-	scatter!([NaN], [NaN], markerstrokewidth=0, color=colorpalette[1])  # Add dummy series
+	# scatter!([NaN], [NaN], markerstrokewidth=0, color=colorpalette[1])  # Add dummy series
 
 
 	scatter!(pre2νvalues[pre2perm], pre2γvalues[pre2perm], label=nothing, zcolor=log.(pre2numcounts[pre2perm]), color=myoranges, markerstrokewidth=0)
 	pre2linebounds = [10^-4, 3*10^-3]
 	plot!(pre2linebounds, pre2prod./pre2linebounds, color = 2, lw=2, label=:none)
-	scatter!([NaN], [NaN], markerstrokewidth=0, color=colorpalette[2])  # Add dummy series
+	# scatter!([NaN], [NaN], markerstrokewidth=0, color=colorpalette[2])  # Add dummy series
 	
 	scatter!(post1νvalues, post1γvalues,xscale=:log10, yscale=:log10, label=:none, zcolor=log.(post1numcounts[post1perm]), color=myblues, markerstrokewidth=0)
 	post1linebounds = [6*10^(-3), 2*10^-2]
@@ -252,7 +264,7 @@ begin
 
 	scatter!(post2νvalues, post2γvalues, markerstrokecolor=:auto, label=:none, tickfontsize=15, zcolor=log.(post2numcounts[post2perm]), color=myoranges, markerstrokewidth=0, colorbar=:false)
 	post2linebounds = [6*10^(-3), 1.6*10^-2]
-	plot!(post2linebounds, post2prod./post2linebounds, color = 2, lw=2, label=:none, size=(600, 400), legendfontsize=14)
+	plot!(post2linebounds, post2prod./post2linebounds, color = 2, lw=2, label=:none, size=(600, 350), legendfontsize=12)
 	
 	# savefig("./Plots/LogScatter.png")
 end
@@ -275,6 +287,7 @@ begin
 	noBCcells = pre1noBCcells
 	ddPCR = R01ddPCR
 	finalcelldf = pre1finalcelldf
+	noisefitdf = pre1noisefitdf
 	
 	numuniqueplasmids = vcat([sum(val != 0 for val in row) for row in eachrow(celldf[:, 2:end])], zeros(Int, noBCcells))
 end
@@ -356,7 +369,7 @@ begin
 
 	# Filter for genes with at least 200 counts greater than 10
 	for TF in TFlist
-		if sum(celldf[:, TF] .> 10) > 200
+		if sum(celldf[:, TF] .>= 10) > 200
 			push!(TFkept, TF)
 		end
 	end
@@ -370,7 +383,7 @@ md"""
 
 # ╔═╡ fdcea879-6ae0-4e74-b931-934e551f2fed
 begin
-	testTF = TFkept[12]
+	testTF = TFkept[15]
 	testcountdict = formcountdict(testTF, celldf, 0)
 	testmax = maximum(keys(testcountdict))
 	testnumcounts = sum(values(testcountdict))
@@ -379,6 +392,9 @@ end
 
 # ╔═╡ 725a2c87-b9c3-418c-8fc1-48c448713400
 plot(testcounts, testcountfreq, ylim=(0, 0.003), label=false, xlabel="Counts", ylabel="Frequency")
+
+# ╔═╡ dc1c2c00-1a17-461e-8dfb-3ee6a68c9fb8
+testTF
 
 # ╔═╡ e310b53e-de2a-4295-9b69-6b7657e29951
 plotTF = "Plasmid_16"
@@ -409,6 +425,36 @@ end
 
 # ╔═╡ eb493270-6eec-4883-9237-c0b8862a332b
 sum(plotcountfreq[2:6])
+
+# ╔═╡ 1fced61e-e061-42e5-b153-0d64f7d3d4b8
+begin
+	ν, γ, ρμ, α, f, threshold = noisefitdf[:, plotTF]
+	
+	gex(z) = GNB(z, ρμ, α)
+	gexν(z) = GNB(z, ρμ*ν, α)
+	gcont(z) = Gpois(gexν(z), f*γ)
+	gseq(z) = gcont(z)*(f*gex(z) + (1-f))
+
+	pnoexlist = taylor_expand(z->gcont(z)*gex(z), order = plotcounts[end]).coeffs
+    pseqlist = taylor_expand(gseq, order = plotcounts[end]).coeffs
+    pnolistlong = taylor_expand(gcont, order = plotcounts[end]).coeffs
+end
+
+# ╔═╡ 68bff31e-b982-4183-8c5a-8585aee5f47d
+ν
+
+# ╔═╡ 3db6e14f-aca3-44ed-bd3c-12319468b1ed
+begin
+	plot(plotcounts, plotcountfreq, color = 1, lw=3, label="Counts")
+
+	plot!(plotcounts, (1-f).*pnolistlong, lw=3, label="Contaminant")
+	plot!(plotcounts, f.*pnoexlist, lw=3, label="Exp+Cont", c=5)
+	
+	# plot!(plotcounts, pseqlist.+4e-5, lw=3, label="Total")
+	
+	plot!(ylim=(0, 0.008), xlim=(0, 110),xticks = [0, 100], yticks=[0.0, 0.004, 0.008], size=(600, 300), tickfontsize=16, legendfontsize=12)
+	savefig("./Plots/Fit_Pre_R01_P16.png")
+end
 
 # ╔═╡ 31d069e8-3838-4686-9f05-8ae423f70c47
 # begin
@@ -663,8 +709,12 @@ end
 # ╠═487249ca-ddcf-4dbd-8c79-dde5639cfb29
 # ╠═7c18dc4c-fab0-48ba-8693-1e0158cb029e
 # ╠═88e75c2b-7b0f-4625-979c-6b48bd034d06
+# ╠═78ca2110-df58-4032-a5f5-21d6a9fcae59
+# ╠═7413114d-0fa4-4269-abad-8c7cee21caf2
+# ╠═63436721-a35f-4e0a-a2b2-318282702677
 # ╠═c9b28149-b848-4cae-8de7-70533628c7dd
 # ╠═b98ae866-3d06-4126-b58d-537eaab6b504
+# ╠═d35b5774-cb3d-4214-9a70-48dbad96ca84
 # ╠═054d8a56-a86d-4883-be0e-901b01893570
 # ╠═7c28ffc9-3720-4808-ae17-cabad2d89c68
 # ╠═c1e1a053-6d49-4ae8-a1d1-c6fa5f712c3c
@@ -684,11 +734,15 @@ end
 # ╟─1044643c-884f-4017-a7c8-55a129374cb9
 # ╠═fdcea879-6ae0-4e74-b931-934e551f2fed
 # ╠═725a2c87-b9c3-418c-8fc1-48c448713400
+# ╠═dc1c2c00-1a17-461e-8dfb-3ee6a68c9fb8
 # ╠═e310b53e-de2a-4295-9b69-6b7657e29951
 # ╠═dce8b0ee-6bf9-41da-8096-30cf02139cbc
 # ╠═4f3b95e9-ca2a-41c8-a0e8-4a149642e4b8
 # ╠═41929758-8a1a-4e5d-8078-36e715fbb2a9
 # ╠═eb493270-6eec-4883-9237-c0b8862a332b
+# ╠═1fced61e-e061-42e5-b153-0d64f7d3d4b8
+# ╠═68bff31e-b982-4183-8c5a-8585aee5f47d
+# ╠═3db6e14f-aca3-44ed-bd3c-12319468b1ed
 # ╠═31d069e8-3838-4686-9f05-8ae423f70c47
 # ╠═426cd89c-25de-4c59-98cd-a0a976adf186
 # ╠═af7132a5-7f3a-4c84-a093-c403387016d7
