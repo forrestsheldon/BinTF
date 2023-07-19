@@ -39,41 +39,38 @@ for cond in condlist
         zerobcdroplets = parse(Int, readline(joinpath(datapath, "$(cond)_$(rep)_ZeroCounts.txt")))
 
         cellBCdf = DataFrame(CSV.File(joinpath(datapath, "$(cond)_$(rep)_CellCounts.tsv"), delim='\t'))
-        notcellBCdf = DataFrame(CSV.File(joinpath(datapath, "$(cond)_$(rep)_EmptyCounts.tsv"), delim='\t'))
-
-
-
+        # notcellBCdf = DataFrame(CSV.File(joinpath(datapath, "$(cond)_$(rep)_EmptyCounts.tsv"), delim='\t'))
 
         # Make histograms from countmaps and find the maximum count values needed
         BClist = names(cellBCdf)[2:end]
 
         cellBCdict = Dict()
-        emptydropletBCdict = Dict()
+        # emptydropletBCdict = Dict()
         
         for BC in BClist
             cellhist = formcountdict(BC, cellBCdf, 0)
-            droplethist = formcountdict(BC, notcellBCdf, zerobcdroplets)
+            # droplethist = formcountdict(BC, notcellBCdf, zerobcdroplets)
 
             cellBCdict[BC] = cellhist
-            emptydropletBCdict[BC] = droplethist
+            # emptydropletBCdict[BC] = droplethist
         end
         print("Binning Complete, ")
 
         cellmaxcount = maximum([maximum(keys(BCdict)) for BCdict in values(cellBCdict)])
-        dropletmaxcount = maximum([maximum(keys(BCdict)) for BCdict in values(emptydropletBCdict)])
+        # dropletmaxcount = maximum([maximum(keys(BCdict)) for BCdict in values(emptydropletBCdict)])
 
         # Place histograms into a dataframe as columns
         cellBChistdf = DataFrame()
-        emptydropletBChistdf = DataFrame()
+        # emptydropletBChistdf = DataFrame()
         
         for BC in BClist
             cellBChistdf[!, BC] = [haskey(cellBCdict[BC], c) ? cellBCdict[BC][c] : 0 for c in 0:cellmaxcount]
-            emptydropletBChistdf[!, BC] = [haskey(emptydropletBCdict[BC], c) ? emptydropletBCdict[BC][c] : 0 for c in 0:dropletmaxcount]
+            # emptydropletBChistdf[!, BC] = [haskey(emptydropletBCdict[BC], c) ? emptydropletBCdict[BC][c] : 0 for c in 0:dropletmaxcount]
         end
 
         mkpath(outputpath)
         CSV.write(joinpath(outputpath, "$(cond)_$(rep)_cell_count_histograms.tsv"), cellBChistdf, delim='\t')
-        CSV.write(joinpath(outputpath, "$(cond)_$(rep)_emptydroplet_count_histograms.tsv"), emptydropletBChistdf, delim='\t')
+        # CSV.write(joinpath(outputpath, "$(cond)_$(rep)_emptydroplet_count_histograms.tsv"), emptydropletBChistdf, delim='\t')
         println("Results Saved")
     end
 end

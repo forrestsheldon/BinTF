@@ -267,16 +267,16 @@ begin
 end
 
 # ╔═╡ 1cc1ee57-3d3b-48aa-941e-8bf70b3e3132
-begin
-	pre1post1names = [p for p in pre1names if p∈ post1names]
+# begin
+# 	pre1post1names = [p for p in pre1names if p∈ post1names]
 	
-	pre1ρμvalues = Vector(pre1noisefitdf[3,pre1post1names])
+# 	pre1ρμvalues = Vector(pre1noisefitdf[3,pre1post1names])
 	
-	post1ρμvalues = Vector(post1noisefitdf[3,pre1post1names])
+# 	post1ρμvalues = Vector(post1noisefitdf[3,pre1post1names])
 
-	scatter(pre1ρμvalues, post1ρμvalues)
-	plot!([0, 250], [0, 250])
-end
+# 	scatter(pre1ρμvalues, post1ρμvalues)
+# 	plot!([0, 250], [0, 250])
+# end
 
 # ╔═╡ 037c7154-c014-476a-9b36-e2605884be04
 md"""
@@ -284,7 +284,41 @@ md"""
 """
 
 # ╔═╡ 7345e9fd-438e-4117-89a8-b7a88cb70dc4
+begin
+	pre1fitdf = DataFrame(CSV.File(joinpath("./Data/PreAmp_R01R02/", "GeneFitData", "allfits","PreAmp_R01_Parameters.tsv"), delim="\t"))
+	post1fitdf = DataFrame(CSV.File(joinpath("./Data/PostAmp_R01R02/", "GeneFitData", "allfits","PostAmp_R01_Parameters.tsv"), delim="\t"))
 
+	pre2fitdf = DataFrame(CSV.File(joinpath("./Data/PreAmp_R01R02/", "GeneFitData", "allfits","PreAmp_R02_Parameters.tsv"), delim="\t"))
+	post2fitdf = DataFrame(CSV.File(joinpath("./Data/PostAmp_R01R02/", "GeneFitData", "allfits","PostAmp_R02_Parameters.tsv"), delim="\t"))
+end
+
+# ╔═╡ e101d9ac-1b7d-4cb3-896a-edc2b9ecbcde
+begin
+	pre1allνvalues = Vector(pre1fitdf[1, :])
+	pre1allγvalues = Vector(pre1fitdf[2, :])
+	pre1allθvalues = Vector(pre1fitdf[6, :])
+
+	pre2allνvalues = Vector(pre2fitdf[1, :])
+	pre2allγvalues = Vector(pre2fitdf[2, :])
+	pre2allθvalues = Vector(pre2fitdf[6, :])
+
+	post1allνvalues = Vector(post1fitdf[1, :])
+	post1allγvalues = Vector(post1fitdf[2, :])
+	post1allθvalues = Vector(post1fitdf[6, :])
+
+	post2allνvalues = Vector(post2fitdf[1, :])
+	post2allγvalues = Vector(post2fitdf[2, :])
+	post2allθvalues = Vector(post2fitdf[6, :])
+
+end
+
+# ╔═╡ 9441c065-2d92-43ad-964a-51f2838971c2
+histogram(post2allθvalues)
+
+# ╔═╡ 482c62fa-12f5-48fd-bdb7-9ce62bceaabc
+md"""
+### Labeling Histograms
+"""
 
 # ╔═╡ 1614673f-5bc8-4907-a89c-95d826dbedf7
 begin
@@ -725,6 +759,9 @@ end
 # ╠═1cc1ee57-3d3b-48aa-941e-8bf70b3e3132
 # ╠═037c7154-c014-476a-9b36-e2605884be04
 # ╠═7345e9fd-438e-4117-89a8-b7a88cb70dc4
+# ╠═e101d9ac-1b7d-4cb3-896a-edc2b9ecbcde
+# ╠═9441c065-2d92-43ad-964a-51f2838971c2
+# ╠═482c62fa-12f5-48fd-bdb7-9ce62bceaabc
 # ╠═1614673f-5bc8-4907-a89c-95d826dbedf7
 # ╠═777d7c02-a033-4060-a11d-3b70278edafa
 # ╠═a336c29d-502c-4727-977b-578c9798ce53
