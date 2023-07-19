@@ -100,7 +100,7 @@ genes to estimate the contaminant parameters.""")
     initthresh = st.number_input("With at least this magnitude:", value = 10, step = 1)
 
     if st.button("Fit Contaminants: This will take a while"):
-        script_path = "./GeneBinScripts/FitContaminantParameters.jl"  # Replace with the actual path to your Julia script
+        script_path = "./BarcodeContScripts/FitContaminantParameters.jl"  # Replace with the actual path to your Julia script
 
         with subprocess.Popen(["julia", script_path, rep, cond, str(numcounts), str(initthresh)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
             for line in proc.stdout:

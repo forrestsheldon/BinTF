@@ -23,7 +23,7 @@ Note that by default this will run over all replicates and conditions given.""")
 
 
     if st.button("Histogram Counts"):
-        script_path = "./GeneBinScripts/MakeCountHistograms.jl"  # Replace with the actual path to your Julia script
+        script_path = "./BarcodeContScripts/MakeCountHistograms.jl"  # Replace with the actual path to your Julia script
 
         # Run the subprocess with real-time output
         with subprocess.Popen(["julia", script_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:

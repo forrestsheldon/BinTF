@@ -110,9 +110,6 @@ end
 # ╔═╡ 0c15417f-d723-4672-8039-c33564b12f61
 colorpalette = theme_palette(:auto)
 
-# ╔═╡ 315e8388-27b0-4981-b920-0e3d21362f13
-range(colorpalette[1], stop=colorant"black", length=3)
-
 # ╔═╡ b501569c-59e7-46d4-a059-02708c44eb99
 bluegrad = cgrad([:white, colorpalette[1], :black])
 
@@ -140,8 +137,10 @@ end
 begin
 	
 	pre1numcounts = sum.(eachcol(pre1celldf[!,pre1names]))
+	# pre1numcounts = sum.(c .!= 0 for c in eachcol(pre1celldf[!,pre1names]))
 	pre1perm = sortperm(pre1numcounts)
 	pre2numcounts = sum.(eachcol(pre2celldf[!,pre2names]))
+	# pre2numcounts = sum.(c .!= 0 for c in eachcol(pre2celldf[!,pre2names]))
 	pre2perm = sortperm(pre2numcounts)
 	
 	scatter(pre1νvalues[pre1perm], pre1γvalues[pre1perm], zcolor=log.(pre1numcounts[pre1perm]), colorbar=false, c=myblues, markerstrokewidth=0, xlim=(0, 0.005))
@@ -155,45 +154,42 @@ begin
 end
 
 # ╔═╡ 7c18dc4c-fab0-48ba-8693-1e0158cb029e
-begin
-	minalpha = 0.3
+# begin
+# 	minalpha = 0.3
 
-	pre1alpha = pre1numcounts[pre1perm]
-	pre1alpha = pre1alpha .- pre1alpha[1]
-	pre1alpha = pre1alpha ./ pre1alpha[end]
-	pre1alpha = minalpha .+ pre1alpha.*(1-minalpha)
+# 	pre1alpha = pre1numcounts[pre1perm]
+# 	pre1alpha = pre1alpha .- pre1alpha[1]
+# 	pre1alpha = pre1alpha ./ pre1alpha[end]
+# 	pre1alpha = minalpha .+ pre1alpha.*(1-minalpha)
 	
 	
-	scatter(pre1νvalues[pre1perm], pre1γvalues[pre1perm], alpha=pre1alpha, c=1, markerstrokewidth=0, xlim=(0, 0.0047), ylim=(0, 200))
+# 	scatter(pre1νvalues[pre1perm], pre1γvalues[pre1perm], alpha=pre1alpha, c=1, markerstrokewidth=0, xlim=(0, 0.0047), ylim=(0, 200))
 
 
-	pre2alpha = pre2numcounts[pre2perm]
-	pre2alpha = pre2alpha .- pre2alpha[1]
-	pre2alpha = pre2alpha ./ pre2alpha[end]
-	pre2alpha = minalpha .+ pre2alpha.*(1-minalpha)
+# 	pre2alpha = pre2numcounts[pre2perm]
+# 	pre2alpha = pre2alpha .- pre2alpha[1]
+# 	pre2alpha = pre2alpha ./ pre2alpha[end]
+# 	pre2alpha = minalpha .+ pre2alpha.*(1-minalpha)
 	
-	scatter!(pre2νvalues[pre2perm], pre2γvalues[pre2perm], alpha=pre2alpha, markerstrokewidth=0)
+# 	scatter!(pre2νvalues[pre2perm], pre2γvalues[pre2perm], alpha=pre2alpha, markerstrokewidth=0)
 
-end
+# end
 
 # ╔═╡ 88e75c2b-7b0f-4625-979c-6b48bd034d06
-begin
-	scatter(1 ./pre1numcounts, pre1γvalues, xlim=(0, 0.00011), ylim=(0, 100), markerstrokewidth=0)
-	scatter!(1 ./pre2numcounts, pre2γvalues, xlim=(0, 0.00011), ylim=(0, 100), markerstrokewidth=0)
-end
+# begin
+# 	scatter(1 ./pre1numcounts, pre1γvalues, xlim=(0, 0.00011), ylim=(0, 100), markerstrokewidth=0)
+# 	scatter!(1 ./pre2numcounts, pre2γvalues, xlim=(0, 0.00011), ylim=(0, 100), markerstrokewidth=0)
+# end
 
 # ╔═╡ 78ca2110-df58-4032-a5f5-21d6a9fcae59
 median(pre1γvalues), median(pre2γvalues)
 
-# ╔═╡ 7413114d-0fa4-4269-abad-8c7cee21caf2
-
-
 # ╔═╡ c9b28149-b848-4cae-8de7-70533628c7dd
-begin
-	scatter(1 ./pre1numcounts, pre1νvalues, markerstrokewidth=0)
-	scatter!(1 ./pre2numcounts, pre2νvalues, markerstrokewidth=0)
-	plot!(xlim=(0, 0.00011), ylim=(0, 0.006))
-end
+# begin
+# 	scatter(1 ./pre1numcounts, pre1νvalues, markerstrokewidth=0)
+# 	scatter!(1 ./pre2numcounts, pre2νvalues, markerstrokewidth=0)
+# 	plot!(xlim=(0, 0.00011), ylim=(0, 0.006))
+# end
 
 # ╔═╡ b98ae866-3d06-4126-b58d-537eaab6b504
 begin
@@ -208,42 +204,43 @@ median(post1γvalues), median(post2γvalues)
 # ╔═╡ 054d8a56-a86d-4883-be0e-901b01893570
 begin
 	post1numcounts = sum.(eachcol(post1celldf[!,post1names]))
+	# post1numcounts = sum.(c .!= 0 for c in eachcol(post1celldf[!,post1names]))
+
 	post1perm = sortperm(post1numcounts)
 	
 	post2numcounts = sum.(eachcol(post2celldf[!,post2names]))
+	# post2numcounts = sum.(c .!= 0 for c in eachcol(post2celldf[!,post2names]))
+
 	post2perm = sortperm(post2numcounts)
 	
 	scatter(post1νvalues[post1perm], post1γvalues[post1perm], zcolor=log.(post1numcounts[post1perm]), colorbar=false, c=myblues, markerstrokewidth=0)
 end
 
-# ╔═╡ 63436721-a35f-4e0a-a2b2-318282702677
-post2perm
-
 # ╔═╡ 7c28ffc9-3720-4808-ae17-cabad2d89c68
-begin
-	scatter(1 ./post1numcounts, post1γvalues, ylim=(0, 50), markerstrokewidth=0)
-	scatter!(1 ./post2numcounts, post2γvalues, ylim=(0, 50), markerstrokewidth=0)
-end
+# begin
+# 	scatter(1 ./post1numcounts, post1γvalues, ylim=(0, 50), markerstrokewidth=0)
+# 	scatter!(1 ./post2numcounts, post2γvalues, ylim=(0, 50), markerstrokewidth=0)
+# end
 
 # ╔═╡ c1e1a053-6d49-4ae8-a1d1-c6fa5f712c3c
-begin
-	scatter(1 ./post1numcounts, post1νvalues, markerstrokewidth=0)
-	scatter!(1 ./post2numcounts, post2νvalues, markerstrokewidth=0)
-	plot!(xlim=(0, 0.00014), ylim=(0, 0.02))
-end
+# begin
+# 	scatter(1 ./post1numcounts, post1νvalues, markerstrokewidth=0)
+# 	scatter!(1 ./post2numcounts, post2νvalues, markerstrokewidth=0)
+# 	plot!(xlim=(0, 0.00014), ylim=(0, 0.02))
+# end
 
 # ╔═╡ 60f09855-a237-4259-8c6d-98eaf946c40d
-begin
-	post1alpha = post1numcounts[post1perm]
-	post1alpha = post1alpha .- post1alpha[1]
-	post1alpha = post1alpha ./ post1alpha[end]
-	post1alpha = minalpha .+ post1alpha.*(1-minalpha)
+# begin
+# 	post1alpha = post1numcounts[post1perm]
+# 	post1alpha = post1alpha .- post1alpha[1]
+# 	post1alpha = post1alpha ./ post1alpha[end]
+# 	post1alpha = minalpha .+ post1alpha.*(1-minalpha)
 
-	post2alpha = post2numcounts[post2perm]
-	post2alpha = post2alpha .- post2alpha[1]
-	post2alpha = post2alpha ./ post2alpha[end]
-	post2alpha = minalpha .+ post2alpha.*(1-minalpha)
-end
+# 	post2alpha = post2numcounts[post2perm]
+# 	post2alpha = post2alpha .- post2alpha[1]
+# 	post2alpha = post2alpha ./ post2alpha[end]
+# 	post2alpha = minalpha .+ post2alpha.*(1-minalpha)
+# end
 
 # ╔═╡ 09fbc6b9-94e4-4109-9173-571bf648f35a
 begin
@@ -280,6 +277,14 @@ begin
 	scatter(pre1ρμvalues, post1ρμvalues)
 	plot!([0, 250], [0, 250])
 end
+
+# ╔═╡ 037c7154-c014-476a-9b36-e2605884be04
+md"""
+### Parameters after Regularisation
+"""
+
+# ╔═╡ 7345e9fd-438e-4117-89a8-b7a88cb70dc4
+
 
 # ╔═╡ 1614673f-5bc8-4907-a89c-95d826dbedf7
 begin
@@ -700,27 +705,26 @@ end
 # ╠═5961d6a2-4b13-4865-b6be-0e8ece20d5f2
 # ╠═e0a3512d-2b66-4f5c-9bda-8c7a0712ecbf
 # ╠═0c15417f-d723-4672-8039-c33564b12f61
-# ╠═315e8388-27b0-4981-b920-0e3d21362f13
 # ╠═b501569c-59e7-46d4-a059-02708c44eb99
 # ╠═07dd1ce6-7791-4b37-9695-24ecb8dd6fcb
 # ╠═35134891-e3dd-459c-8703-97235be886ea
 # ╠═b09d1534-311a-4fd2-83d2-d1a9628b0c34
 # ╠═ff72b3c2-c4e1-458a-9f57-34fbcd694327
 # ╠═487249ca-ddcf-4dbd-8c79-dde5639cfb29
-# ╠═7c18dc4c-fab0-48ba-8693-1e0158cb029e
-# ╠═88e75c2b-7b0f-4625-979c-6b48bd034d06
+# ╟─7c18dc4c-fab0-48ba-8693-1e0158cb029e
+# ╟─88e75c2b-7b0f-4625-979c-6b48bd034d06
 # ╠═78ca2110-df58-4032-a5f5-21d6a9fcae59
-# ╠═7413114d-0fa4-4269-abad-8c7cee21caf2
-# ╠═63436721-a35f-4e0a-a2b2-318282702677
-# ╠═c9b28149-b848-4cae-8de7-70533628c7dd
+# ╟─c9b28149-b848-4cae-8de7-70533628c7dd
 # ╠═b98ae866-3d06-4126-b58d-537eaab6b504
 # ╠═d35b5774-cb3d-4214-9a70-48dbad96ca84
 # ╠═054d8a56-a86d-4883-be0e-901b01893570
-# ╠═7c28ffc9-3720-4808-ae17-cabad2d89c68
-# ╠═c1e1a053-6d49-4ae8-a1d1-c6fa5f712c3c
-# ╠═60f09855-a237-4259-8c6d-98eaf946c40d
+# ╟─7c28ffc9-3720-4808-ae17-cabad2d89c68
+# ╟─c1e1a053-6d49-4ae8-a1d1-c6fa5f712c3c
+# ╟─60f09855-a237-4259-8c6d-98eaf946c40d
 # ╠═09fbc6b9-94e4-4109-9173-571bf648f35a
 # ╠═1cc1ee57-3d3b-48aa-941e-8bf70b3e3132
+# ╠═037c7154-c014-476a-9b36-e2605884be04
+# ╠═7345e9fd-438e-4117-89a8-b7a88cb70dc4
 # ╠═1614673f-5bc8-4907-a89c-95d826dbedf7
 # ╠═777d7c02-a033-4060-a11d-3b70278edafa
 # ╠═a336c29d-502c-4727-977b-578c9798ce53

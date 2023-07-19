@@ -105,7 +105,7 @@ def app(datadir, rep, cond):
     st.title("Run Full Fit")
 
     if st.button("Full Gene Fit: will take a while"):
-        script_path = "./GeneBinScripts/FitAllGenes.jl"
+        script_path = "./BarcodeContScripts/FitAllGenes.jl"
         
         with subprocess.Popen(["julia", script_path, rep, cond], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
             for line in proc.stdout:

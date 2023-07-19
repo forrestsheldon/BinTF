@@ -23,14 +23,13 @@ def app(datadir, rep, cond):
 
     st.title("Fit Tuning")
     st.text("""Despite our best efforts, some genes will still display problematic fits.
-This can result in a threshold of 0 (everything is included) or too large
-of a threshold (almost everything is noise). This page allows you to adjust
-the fraction of cells that contain the gene, f in the sidebar and tune the
-fit of these problematic genes to your liking.
+If counts are very low, the MLE may have not converged.
+            In this case, try a method of moments fit with a lower threshold.
 
-No genes should display a threshold of 0.
-Reducing f will often help to increase the threshold. Increasing f will often
-decrease the threshold for genes where noise is dominant.
+If the MLE worked there can still be problems with the fit. This can result in a threshold of 0 (everything is included) or too large
+of a threshold (almost everything is noise).
+
+A simple method of moments fit is often the best option to deal with these.
 
 For problematic fits, you can re-run the fit using a different initial condition or use a
 method of moments run to obtain an approximate fit. Everything below the threshold is
@@ -150,51 +149,11 @@ assumed to be noise and everything equal to or above is assumed to be expression
 
         if not os.path.exists(mixture_path_final):
             shutil.copy(mixture_path_init, mixture_path_final)
-        st.experimental_rerun() 
-            
-    if st.sidebar.button("Rerun Fit"):
-        # Rerun fit with new initial condition
-        script_path = "./GeneBinScripts/FitSingleGene.jl"  # Replace with the actual path to your Julia script
+        st.experimental_rerun()
 
-        # Run the subprocess with real-time output
-        with subprocess.Popen(["julia", script_path, rep, cond, str(new_thresh), selected_gene], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
-            for line in proc.stdout:
-                st.write(line.strip())
-
-        # Wait for the subprocess to finish and get the return code
-        return_code = proc.wait()
-
-        if return_code == 0:
-            st.success("Fit Completed")
-            st.experimental_rerun() 
-        else:
-            st.error("The script encountered an error.")
-            st.write("Error message:")
-            st.write(proc.stderr)
-           
-    if st.sidebar.button("Rerun with fixed f"):
-        # Run Tuning Script
-        script_path = "./GeneBinScripts/FitSingleGene_fixedf.jl"  # Replace with the actual path to your Julia script
-
-        # Run the subprocess with real-time output
-        with subprocess.Popen(["julia", script_path, rep, cond, selected_gene, str(new_f), str(geneparam[0]), str(geneparam[1]), str(geneparam[2]), str(geneparam[3])], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
-            for line in proc.stdout:
-                st.write(line.strip())
-
-        # Wait for the subprocess to finish and get the return code
-        return_code = proc.wait()
-
-        if return_code == 0:
-            st.success("Final Fit Saved")
-            st.experimental_rerun() 
-        else:
-            st.error("The script encountered an error.")
-            st.write("Error message:")
-            st.write(proc.stderr)
-        
-    if st.sidebar.button("Use MoM Fit"):
+    if st.sidebar.button("MoM Fit"):
         # Run MoM Script
-        script_path = "./GeneBinScripts/MoM_run.jl"  # Replace with the actual path to your Julia script
+        script_path = "./BarcodeContScripts/MoM_run.jl"  # Replace with the actual path to your Julia script
 
         # Run the subprocess with real-time output
         with subprocess.Popen(["julia", script_path, rep, cond, str(new_thresh), selected_gene], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
@@ -211,6 +170,46 @@ assumed to be noise and everything equal to or above is assumed to be expression
             st.error("The script encountered an error.")
             st.write("Error message:")
             st.write(proc.stderr)
+            
+    # if st.sidebar.button("Rerun Fit"):
+    #     # Rerun fit with new initial condition
+    #     script_path = "./BarcodeContScripts/FitSingleGene.jl"  # Replace with the actual path to your Julia script
+
+    #     # Run the subprocess with real-time output
+    #     with subprocess.Popen(["julia", script_path, rep, cond, str(new_thresh), selected_gene], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
+    #         for line in proc.stdout:
+    #             st.write(line.strip())
+
+    #     # Wait for the subprocess to finish and get the return code
+    #     return_code = proc.wait()
+
+    #     if return_code == 0:
+    #         st.success("Fit Completed")
+    #         st.experimental_rerun() 
+    #     else:
+    #         st.error("The script encountered an error.")
+    #         st.write("Error message:")
+    #         st.write(proc.stderr)
+           
+    # if st.sidebar.button("Rerun with fixed f"):
+    #     # Run Tuning Script
+    #     script_path = "./BarcodeContScripts/FitSingleGene_fixedf.jl"  # Replace with the actual path to your Julia script
+
+    #     # Run the subprocess with real-time output
+    #     with subprocess.Popen(["julia", script_path, rep, cond, selected_gene, str(new_f), str(geneparam[0]), str(geneparam[1]), str(geneparam[2]), str(geneparam[3])], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
+    #         for line in proc.stdout:
+    #             st.write(line.strip())
+
+    #     # Wait for the subprocess to finish and get the return code
+    #     return_code = proc.wait()
+
+    #     if return_code == 0:
+    #         st.success("Final Fit Saved")
+    #         st.experimental_rerun() 
+    #     else:
+    #         st.error("The script encountered an error.")
+    #         st.write("Error message:")
+    #         st.write(proc.stderr)
     
     if st.sidebar.button("Reset Fit"):
         try:
@@ -234,7 +233,7 @@ assumed to be noise and everything equal to or above is assumed to be expression
 
 
     if st.sidebar.button("Binarise Counts"):
-        script_path = "./GeneBinScripts/BinariseCounts.jl"  # Replace with the actual path to your Julia script
+        script_path = "./BarcodeContScripts/BinariseCounts.jl"  # Replace with the actual path to your Julia script
 
         # Run the subprocess with real-time output
         with subprocess.Popen(["julia", script_path, rep, cond], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:

@@ -47,8 +47,13 @@ function MoMinitial(countdict, thresh)
     ρμi = E1i
     αi = (E2i - E1i)/E1i^2 - 1
 
-    γi = (1/fi)*(C1i/E1i)^2*(E2i-E1i)/(C2i-C1i-C1i^2)
-    νi = E1i/C1i*(C2i-C1i^2-C1i)/(E2i-E1i)
+    if C1i != 0
+        γi = (1/fi)*(C1i/E1i)^2*(E2i-E1i)/(C2i-C1i-C1i^2)
+        νi = E1i/C1i*(C2i-C1i^2-C1i)/(E2i-E1i)
+    else
+        νi = 0
+        γi = 0
+    end
     
 
     [νi, γi, ρμi, αi, fi]
