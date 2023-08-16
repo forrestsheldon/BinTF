@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import plotly.graph_objs as go
 import subprocess
 
 def loadlist(fname):
@@ -9,32 +9,53 @@ def loadlist(fname):
         list = [line.rstrip() for line in f]
     return list
 
-def app(datadir, rep, cond):
+def get_plasmid_names(file_path):
+    df = pd.read_csv(file_path, sep='\t', nrows=0)  # Load only the first (header) row
+    return df.columns.tolist()[1:]
+
+def load_plasmid_counts(filepath, selected_plasmids):
+    return pd.read_csv(filepath, sep='\t', usecols=selected_plasmids)
+
+def plot_data(rawcount_df, noBCcells, normalize):
+
+    fig = go.Figure()
+    maxcells = 0
+    maxcount = 0
+
+    for plasmid_col in rawcount_df:
+        counthist = rawcount_df[plasmid_col].value_counts().sort_index()
+        counthist.loc[0] += noBCcells
+        
+        if normalize:
+            counthist = counthist / counthist.sum()
+
+        fig.add_trace(go.Scatter(x=counthist.index, y=counthist.values, mode="lines", name=plasmid_col))
+        
+        maxcells = max(maxcells, max(counthist.values))
+        maxcount = max(maxcount, max(counthist.index))
+
+    return fig, maxcells, maxcount
+
+def app(datadir, rep, cond, contdist):
     #####################
     # Set Path Variables
     #####################
     # Data is histogram files
-    histdir = os.path.join(datadir, "GeneFitData", "counthistograms")
+    # countdir = os.path.join(datadir, "GeneFitData", "counthistograms")
 
 
     #####################
     # Functions
     #####################
-    def get_file_path(rep, cond):
-        return os.path.join(histdir, f"{cond}_{rep}_cell_count_histograms.tsv")
-
-    def load_tsv_file(file_path):
-        return pd.read_csv(file_path, sep='\t')
-
-    def plot_data(df_cell, selected_columns, normalize):
-        df_plot = df_cell[selected_columns].reset_index()
+    def get_CellCount_path(rep, cond):
+        return os.path.join(datadir, f"{cond}_{rep}_CellCounts.tsv")
+    
+    def get_noBCcells(rep, cond):
+        with open(os.path.join(datadir, f"{cond}_{rep}_noBCcells.txt"), 'r') as file:
+            noBCcells = int(file.read().strip())
+        return noBCcells
         
-        if normalize:
-            df_plot[selected_columns] = df_plot[selected_columns].div(df_plot[selected_columns].sum(axis=0), axis=1)
 
-        fig = px.line(df_plot, x="index", y=selected_columns, title="Line Plot of Selected Columns")
-
-        return fig
 
     
     #####################
@@ -44,26 +65,29 @@ def app(datadir, rep, cond):
     st.text("""Check counts for anomalous genes and make note of special cases.
     Zoom axes using controls at the bottom of the sidebar.
     Normalising counts with the checkbox, most genes will be viewable with y-limit near 0.01.""")
- 
 
-    file_path_cell = get_file_path(rep, cond)
+    file_path_cell = get_CellCount_path(rep, cond)
+    noBCcells = get_noBCcells(rep, cond)
 
-    df_cell = load_tsv_file(file_path_cell)
-
-    columns = df_cell.columns.tolist()
+    plasmid_names = get_plasmid_names(file_path_cell)
+    plasmid_names.sort()
 
     #####################
     # Pick which Gene to Plot
     #####################
-    st.sidebar.subheader("Select columns to plot:")
-    selected_columns = [col for col in columns if st.sidebar.checkbox(col)]
+    st.sidebar.subheader("Select plasmids to plot:")
+    selected_plasmids = [col for col in plasmid_names if st.sidebar.checkbox(col)]
 
-    if selected_columns:
-        st.sidebar.subheader("Set axis limits:")
-        normalize = st.sidebar.checkbox("Normalize by sum")
+    st.sidebar.subheader("Set axis limits:")
+    normalize = st.sidebar.checkbox("Normalize by sum")
+
+
+    if selected_plasmids:
+
+        rawcount_df = load_plasmid_counts(file_path_cell, selected_plasmids)
 
         # Prepare data for the plot
-        fig = plot_data(df_cell, selected_columns, normalize)
+        fig, maxcells, maxcount = plot_data(rawcount_df, noBCcells, normalize)
 
         if normalize:
             step_size = 0.0001
@@ -71,10 +95,10 @@ def app(datadir, rep, cond):
             fmtstring = "%.3f"
         else:
             step_size = 1
-            y_min, y_max = 0, df_cell.max().max()
+            y_min, y_max = 0, maxcells
             fmtstring="%d"
 
-        x_min, x_max = st.sidebar.number_input("X-axis min value:", value=df_cell.index.min(), step=1), st.sidebar.number_input("X-axis max value:", value=df_cell.index.max(), step=1)
+        x_min, x_max = st.sidebar.number_input("X-axis min value:", value=0, step=1), st.sidebar.number_input("X-axis max value:", value=maxcount, step=1)
         y_min, y_max = st.sidebar.number_input("Y-axis min value:", value=y_min, step=step_size), st.sidebar.number_input("Y-axis max value:", value=y_max, step=step_size, format=fmtstring)
 
         # Update axis limits
@@ -96,13 +120,13 @@ def app(datadir, rep, cond):
 
     st.text("""This will run the fitting algorithm on high count
 genes to estimate the contaminant parameters.""")
-    numcounts = st.number_input("Select plasmids with at least this many counts:", value=200, step = 1)
-    initthresh = st.number_input("With at least this magnitude:", value = 10, step = 1)
+    numcounts = st.number_input("Select genes that appear in at least this many cells:", value=200, step = 1)
+    initthresh = st.number_input("With a count at least this high:", value = 10, step = 1)
 
     if st.button("Fit Contaminants: This will take a while"):
         script_path = "./BarcodeContScripts/FitContaminantParameters.jl"  # Replace with the actual path to your Julia script
 
-        with subprocess.Popen(["julia", script_path, rep, cond, str(numcounts), str(initthresh)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
+        with subprocess.Popen(["julia", script_path, rep, cond, contdist, str(numcounts), str(initthresh)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
             for line in proc.stdout:
                 st.write(line.strip())
 

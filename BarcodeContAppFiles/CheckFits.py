@@ -10,77 +10,76 @@ import subprocess
 
 def loadlist(fname):
     with open(fname) as f:
-        replist = [line.rstrip() for line in f]
-    return replist
+        list = [line.rstrip() for line in f]
+    return list
 
-def app(datadir, rep, cond):
+def get_plasmid_names(file_path):
+    df = pd.read_csv(file_path, sep='\t', nrows=0)  # Load only the first (header) row
+    return df.columns.tolist()[1:]
+
+def load_plasmid_counts(filepath, selected_plasmids):
+    return pd.read_csv(filepath, sep='\t', usecols=selected_plasmids)
+
+def app(datadir, rep, cond, contdist):
 
     fitdir = os.path.join(datadir, "GeneFitData", "allfits")
-    histdir = os.path.join(datadir, "GeneFitData", "counthistograms")
     outputdir = os.path.join(datadir, "GeneFitData", "finalfits")
 
     os.makedirs(outputdir, exist_ok=True)
 
+    def get_noBCcells(rep, cond):
+        with open(os.path.join(datadir, f"{cond}_{rep}_noBCcells.txt"), 'r') as file:
+            noBCcells = int(file.read().strip())
+        return noBCcells
+
     st.title("Fit Tuning")
-    st.text("""Despite our best efforts, some genes will still display problematic fits.
-If counts are very low, the MLE may have not converged.
-            In this case, try a method of moments fit with a lower threshold.
-
-If the MLE worked there can still be problems with the fit. This can result in a threshold of 0 (everything is included) or too large
-of a threshold (almost everything is noise).
-
-A simple method of moments fit is often the best option to deal with these.
-
-For problematic fits, you can re-run the fit using a different initial condition or use a
-method of moments run to obtain an approximate fit. Everything below the threshold is
-assumed to be noise and everything equal to or above is assumed to be expression.""")
+    st.text("""Despite our best efforts, some genes will still display problematic fits.""")
     
-    cellhistpath = os.path.join(histdir, f"{cond}_{rep}_cell_count_histograms.tsv")
-    df_cellhists = pd.read_csv(cellhistpath, sep='\t')
-    gene_list = df_cellhists.columns.tolist()
-    gene_list.sort()
+    file_path_cell = os.path.join(datadir, f"{cond}_{rep}_CellCounts.tsv")
+    plasmid_names = get_plasmid_names(file_path_cell)
+    plasmid_names.sort()
+    noBCcells = get_noBCcells(rep, cond)
 
-    removedpath = os.path.join(outputdir, f"{cond}_{rep}_RemovedPlasmids.txt")
+
+    removedpath = os.path.join(outputdir, f"{cond}_{rep}_RemovedPlasmids_{contdist}.txt")
     try:
-        removed_genes = loadlist(removedpath)
+        removed_plasmids = loadlist(removedpath)
     except:
-        removed_genes = []
+        removed_plasmids = []
 
-    gene_list = [g for g in gene_list if g not in removed_genes]
+    plasmid_list = [g for g in plasmid_names if g not in removed_plasmids]
 
 
     # # Pull gene list by first finding all the mixture fit files
-    mix_file_pattern = f"{cond}_{rep}_MixtureFit_*.tsv"
-    # mix_file_list = glob.glob(os.path.join(fitdir, mix_file_pattern))
-    # # Regular expression pattern to extract the wildcard part
-    mix_pattern = fr'{cond}_{rep}_MixtureFit_(.+)\.tsv'
-    # gene_list = [re.search(mix_pattern, os.path.basename(file)).group(1) for file in mix_file_list]
-    # gene_list.sort()
+    mix_file_pattern = f"{cond}_{rep}_MixtureFit_*_{contdist}.tsv"
+    mix_pattern = fr'{cond}_{rep}_MixtureFit_(.+)_{contdist}.tsv'
 
     # Pull finalised gene list by first finding all the mixture fit files
     final_file_list = glob.glob(os.path.join(outputdir, mix_file_pattern))
     # Regular expression pattern to extract the wildcard part
     finalised_gene_list = [re.search(mix_pattern, os.path.basename(file)).group(1) for file in final_file_list]
-    unfinalised_genes = [g for g in gene_list if g not in finalised_gene_list]
+
+    unfinalised_genes = [g for g in plasmid_list if g not in finalised_gene_list]
     unfinalised_genes.sort()
 
 
     if unfinalised_genes:
-        g_index = gene_list.index(unfinalised_genes[0])
+        g_index = plasmid_list.index(unfinalised_genes[0])
     else:
         g_index = 0
 
-    selected_gene = st.selectbox("Select a gene to plot:", gene_list, index=g_index)
+    selected_gene = st.selectbox("Select a gene to plot:", plasmid_list, index=g_index)
 
 
     def load_tsv_file(file_path):
         return pd.read_csv(file_path, sep='\t')
             
     #Check if Fit has been Tuned previously by seeing if the Fit already exists in final
-    mixture_path_final = os.path.join(outputdir, f"{cond}_{rep}_MixtureFit_{selected_gene}.tsv")
-    mixture_path_init = os.path.join(fitdir, f"{cond}_{rep}_MixtureFit_{selected_gene}.tsv")
-    param_path_final = os.path.join(outputdir, f"{cond}_{rep}_Parameters.tsv")
-    param_path_init = os.path.join(fitdir, f"{cond}_{rep}_Parameters.tsv")
+    mixture_path_final = os.path.join(outputdir, f"{cond}_{rep}_MixtureFit_{selected_gene}_{contdist}.tsv")
+    mixture_path_init = os.path.join(fitdir, f"{cond}_{rep}_MixtureFit_{selected_gene}_{contdist}.tsv")
+
+    param_path_final = os.path.join(outputdir, f"{cond}_{rep}_Parameters_{contdist}.tsv")
+    param_path_init = os.path.join(fitdir, f"{cond}_{rep}_Parameters_{contdist}.tsv")
 
     if os.path.exists(mixture_path_final):
         st.text("Tuned Parameters Exist: Loading")
@@ -95,8 +94,11 @@ assumed to be noise and everything equal to or above is assumed to be expression
         yval = 0.01
     else:
         st.text("No Fit Found: Plotting Raw Counts")
+        rawcount_df = load_plasmid_counts(file_path_cell, [selected_gene])
         param_df = pd.DataFrame({selected_gene: [0., 0., 0., 0., 0., 0]})
-        mixture_df = df_cellhists[[selected_gene]]
+
+        mixture_df = rawcount_df[selected_gene].value_counts().sort_index()
+        mixture_df.loc[0] += noBCcells
         yval = 10.
     
         
@@ -110,14 +112,19 @@ assumed to be noise and everything equal to or above is assumed to be expression
     
     geneparam = param_df[selected_gene].values
 
-    st.sidebar.text(f"Volume Ratio ν:\t\t {round(geneparam[0], 4)}")
-    st.sidebar.text(f"Bursting Rate γ:\t {round(geneparam[1], 1)}")
-    st.sidebar.text(f"Mean Expression μ:\t {round(geneparam[2], 1)}")
-    st.sidebar.text(f"Aggregation r:\t\t {round(geneparam[3], 4)}")
-    st.sidebar.text(f"Threshold t:\t\t {int(geneparam[5])}")
-
-    new_f = st.sidebar.number_input(f"Fraction f:\t", value=geneparam[4], step = 0.001, format="%.3f")
-    new_thresh = st.sidebar.number_input(f"MoM thresh:\t", value=5, step = 1, format="%d")
+    if contdist == "Full":
+        st.sidebar.text(f"Volume Ratio ν:\t\t {round(geneparam[0], 4)}")
+        st.sidebar.text(f"Bursting Rate γ:\t {round(geneparam[1], 1)}")
+        st.sidebar.text(f"Mean Expression ρμ:\t {round(geneparam[2], 1)}")
+        st.sidebar.text(f"Dispersion α:\t\t {round(geneparam[3], 4)}")
+        st.sidebar.text(f"Mixing fraction f:\t{round(geneparam[4], 3)}")
+        st.sidebar.text(f"Threshold t:\t\t {int(geneparam[5])}")
+    elif contdist == "Poisson":
+        st.sidebar.text(f"Poisson Param νγ:\t {round(geneparam[0], 4)}")
+        st.sidebar.text(f"Mean Expression ρμ:\t {round(geneparam[1], 1)}")
+        st.sidebar.text(f"Dispersion α:\t\t {round(geneparam[2], 4)}")
+        st.sidebar.text(f"Mixing fraction f:\t{round(geneparam[3], 3)}")
+        st.sidebar.text(f"Threshold t:\t\t {int(geneparam[4])}")
 
     ##############
     # Plotting
@@ -156,7 +163,7 @@ assumed to be noise and everything equal to or above is assumed to be expression
         script_path = "./BarcodeContScripts/MoM_run.jl"  # Replace with the actual path to your Julia script
 
         # Run the subprocess with real-time output
-        with subprocess.Popen(["julia", script_path, rep, cond, str(new_thresh), selected_gene], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
+        with subprocess.Popen(["julia", script_path, rep, cond, contdist, str(new_thresh), selected_gene], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
             for line in proc.stdout:
                 st.write(line.strip())
 
@@ -171,12 +178,12 @@ assumed to be noise and everything equal to or above is assumed to be expression
             st.write("Error message:")
             st.write(proc.stderr)
             
-    # if st.sidebar.button("Rerun Fit"):
+    # if st.sidebar.button("Rerun Fit w/ new threshold"):
     #     # Rerun fit with new initial condition
     #     script_path = "./BarcodeContScripts/FitSingleGene.jl"  # Replace with the actual path to your Julia script
 
     #     # Run the subprocess with real-time output
-    #     with subprocess.Popen(["julia", script_path, rep, cond, str(new_thresh), selected_gene], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
+    #     with subprocess.Popen(["julia", script_path, rep, cond, contdist, str(new_thresh), selected_gene], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
     #         for line in proc.stdout:
     #             st.write(line.strip())
 
@@ -219,9 +226,9 @@ assumed to be noise and everything equal to or above is assumed to be expression
         st.experimental_rerun()
 
     if st.sidebar.button("Remove Gene"):
-        removed_genes.append(selected_gene)
+        removed_plasmids.append(selected_gene)
         f = open(removedpath, 'w')
-        f.writelines(removed_genes)
+        f.writelines(p+'\n' for p in removed_plasmids)
         f.close()
         st.experimental_rerun()
 
@@ -232,11 +239,11 @@ assumed to be noise and everything equal to or above is assumed to be expression
         st.sidebar.markdown(f"- {gene}")
 
 
-    if st.sidebar.button("Binarise Counts"):
-        script_path = "./BarcodeContScripts/BinariseCounts.jl"  # Replace with the actual path to your Julia script
+    if st.sidebar.button("Label Counts"):
+        script_path = "./BarcodeContScripts/LabelCounts.jl"  # Replace with the actual path to your Julia script
 
         # Run the subprocess with real-time output
-        with subprocess.Popen(["julia", script_path, rep, cond], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
+        with subprocess.Popen(["julia", script_path, rep, cond, contdist], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
             for line in proc.stdout:
                 st.write(line.strip())
 
@@ -244,8 +251,7 @@ assumed to be noise and everything equal to or above is assumed to be expression
         return_code = proc.wait()
 
         if return_code == 0:
-            st.success("Binarisation Complete!")
-
+            st.success("Labeling Complete!")
 
         else:
             st.error("The script encountered an error.")

@@ -14,7 +14,7 @@ def loadlist(fname):
         replist = [line.rstrip() for line in f]
     return replist
 
-def app(datadir, rep, cond):
+def app(datadir, rep, cond, contdist):
 
     st.title('Compare Replicates')
     replist = loadlist("replicates.txt")
@@ -24,7 +24,7 @@ def app(datadir, rep, cond):
     plasmid_names = []
     # nonzero_fractions_initial = []
     for rep in replist:
-        datapathfinal = os.path.join(datadir, f"{cond}_{rep}_Labeled.tsv")
+        datapathfinal = os.path.join(datadir, f"{cond}_{rep}_Labeled_{contdist}.tsv")
         # datapathinitial = os.path.join(datadir, f"{cond}_{rep}_CellCounts.tsv")
         dffinal = load_data(datapathfinal)
         # dfinitial = load_data(datapathinitial)
@@ -38,37 +38,37 @@ def app(datadir, rep, cond):
         # nonzero_fractions_initial.append(nonzero_fraction_initial)
 
 
-    # create a figure with two bar charts
-    fig = go.Figure()
+    # # create a figure with two bar charts
+    # fig = go.Figure()
 
-    # add bar chart for nonzero_fraction of the first replicate
-    fig.add_trace(go.Bar(
-        x=plasmid_names[0],
-        y=nonzero_fractions_final[0],
-        name=f'Fraction of cells labeled ({replist[0]})',
-        marker_color='blue'
-    ))
+    # # add bar chart for nonzero_fraction of the first replicate
+    # fig.add_trace(go.Bar(
+    #     x=plasmid_names[0],
+    #     y=nonzero_fractions_final[0],
+    #     name=f'Fraction of cells labeled ({replist[0]})',
+    #     marker_color='blue'
+    # ))
 
-    # add bar chart for nonzero_fraction of the second replicate
-    fig.add_trace(go.Bar(
-        x=plasmid_names[1],
-        y=nonzero_fractions_final[1],
-        name=f'Fraction of cells labeled ({replist[1]})',
-        marker_color='orange'
-    ))
+    # # add bar chart for nonzero_fraction of the second replicate
+    # fig.add_trace(go.Bar(
+    #     x=plasmid_names[1],
+    #     y=nonzero_fractions_final[1],
+    #     name=f'Fraction of cells labeled ({replist[1]})',
+    #     marker_color='orange'
+    # ))
 
-    # add a layout
-    fig.update_layout(
-        title='Comparison of Labeled Fractions between Replicates',
-        xaxis_title='Plasmids',
-        yaxis_title='Fraction',
-        barmode='group',  # bars are placed beside each other
-        width=1200,  # width in pixels
-        height=600,  # height in pixels
-        xaxis_tickangle=-45  # rotate labels by 45 degrees
-    )
+    # # add a layout
+    # fig.update_layout(
+    #     title='Comparison of Labeled Fractions between Replicates',
+    #     xaxis_title='Plasmids',
+    #     yaxis_title='Fraction',
+    #     barmode='group',  # bars are placed beside each other
+    #     width=1200,  # width in pixels
+    #     height=600,  # height in pixels
+    #     xaxis_tickangle=-45  # rotate labels by 45 degrees
+    # )
 
-    st.plotly_chart(fig)
+    # st.plotly_chart(fig)
     
     rep1fractions = dict(zip(plasmid_names[0], nonzero_fractions_final[0]))
     rep2fractions = dict(zip(plasmid_names[1], nonzero_fractions_final[1]))

@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.express as px
 import json
 
-def app(datadir, rep, cond):
+def app(datadir, rep, cond, contdist):
     #####################
     # Set Path Variables
     #####################
@@ -16,11 +16,11 @@ def app(datadir, rep, cond):
     # Functions
     #####################
 
-    def get_mixture_path(rep, cond, gene):
-        return os.path.join(fitdir, f"{cond}_{rep}_MixtureFit_{gene}.tsv")
+    def get_mixture_path(rep, cond, gene, contdist):
+        return os.path.join(fitdir, f"{cond}_{rep}_MixtureFit_{gene}_{contdist}.tsv")
     
-    def get_param_path(rep, cond):
-        return os.path.join(fitdir, f"{cond}_{rep}_Parameters.tsv")
+    def get_param_path(rep, cond, contdist):
+        return os.path.join(fitdir, f"{cond}_{rep}_Parameters_{contdist}.tsv")
 
     def load_tsv_file(file_path):
         return pd.read_csv(file_path, sep='\t')
@@ -33,8 +33,11 @@ def app(datadir, rep, cond):
 Check for thresholds of 0, or those that are abnormally high and parameters
 that are out of the normal range of your data.""")
 
-    paramdf = load_tsv_file(get_param_path(rep, cond))
-    paramdf['Variables'] = ['ν', 'γ', 'ρμ', 'α', 'f', 'threshold']
+    paramdf = load_tsv_file(get_param_path(rep, cond, contdist))
+    if contdist == "Full":
+        paramdf['Variables'] = ['ν', 'γ', 'ρμ', 'α', 'f', 'threshold']
+    elif contdist == "Poisson":
+        paramdf['Variables'] = ['νγ', 'ρμ', 'α', 'f', 'threshold']
     paramdf.set_index('Variables', inplace=True)
     st.dataframe(paramdf)
 
@@ -68,10 +71,10 @@ that are out of the normal range of your data.""")
     # Add a button to write the selected genes to a file
     if st.sidebar.button("Save Selected Genes"):
         # Write the selected genes to a file as a list of strings
-        with open(os.path.join(fitdir, f"{cond}_{rep}_SelectedFits.json"), "w") as f:
+        with open(os.path.join(fitdir, f"{cond}_{rep}_SelectedFits_{contdist}.json"), "w") as f:
             json.dump(selected_genes_list, f)
 
-        st.success("Selected genes saved to selected_genes.json")
+        st.success("Selected genes saved")
 
     st.sidebar.title("Axis Limits")
     x_max = st.sidebar.number_input("X-axis max", value=100)
@@ -84,7 +87,7 @@ that are out of the normal range of your data.""")
 
     plotting_gene = st.selectbox("Select a gene to plot:", gene_list)
 
-    mix_path = get_mixture_path(rep, cond, plotting_gene)
+    mix_path = get_mixture_path(rep, cond, plotting_gene, contdist)
     mix_df = load_tsv_file(mix_path)
 
     # # Shift indices by 1

@@ -8,7 +8,7 @@ import subprocess
 from statistics import median
 from numpy import arcsinh, cosh, sinh, sqrt
 
-def app(datadir, rep, cond):
+def app(datadir, rep, cond, contdist):
     #####################
     # Set Path Variables
     #####################
@@ -17,15 +17,16 @@ def app(datadir, rep, cond):
     #####################
     # Functions
     #####################
-    parampath = os.path.join(fitdir, f"{cond}_{rep}_Parameters.tsv")
-    genepath = os.path.join(fitdir, f"{cond}_{rep}_SelectedFits.json")
+    parampath = os.path.join(fitdir, f"{cond}_{rep}_Parameters_{contdist}.tsv")
+    genepath = os.path.join(fitdir, f"{cond}_{rep}_SelectedFits_{contdist}.json")
     
     def load_tsv_file(file_path):
         return pd.read_csv(file_path, sep='\t')
 
-    st.title("Calculate Contaminant Parameters")
-    st.text("""This will select contaminant parameters based on the fit genes. It uses the median and median
-    absolute deviation to calculate the parameter ranges.""")
+    st.title("Contaminant Parameters")
+    st.text("""This will select contaminant parameters based on the fit genes. The median is
+only marginally different than the values obtained from weighting by
+counts, or finite size scaling and so we elect to use it.""")
 
     #####################
     # Pick Run and Plot
@@ -36,78 +37,159 @@ def app(datadir, rep, cond):
 
     param_df = load_tsv_file(parampath)
 
-    nuvalues = param_df.loc[0, selected_genes]
-    gamvalues = param_df.loc[1, selected_genes]
-    nugamvalues = [n*g for n, g in zip(nuvalues, gamvalues)]
-    
-    gammedian = median(gamvalues)
-    gamMAD = median(abs(g - gammedian) for g in gamvalues)
+    if contdist == "Full":
+        nuvalues = param_df.loc[0, selected_genes]
+        gamvalues = param_df.loc[1, selected_genes]
+        nugamvalues = [n*g for n, g in zip(nuvalues, gamvalues)]
+        alphavalues = param_df.loc[3, selected_genes]
+        
+        gammedian = median(gamvalues)
+        # gamMAD = median(abs(g - gammedian) for g in gamvalues)
 
-    nugammedian = median(nugamvalues)
-    nugamMAD = median(abs(ng - nugammedian) for ng in nugamvalues)
+        nugammedian = median(nugamvalues)
+        # nugamMAD = median(abs(ng - nugammedian) for ng in nugamvalues)
 
-    nuest = nugammedian/gammedian
-    nuMAD = sqrt(1/gammedian**2*nugamMAD**2 + nugammedian**2/gammedian**4*gamMAD**2)
+        nuest = nugammedian/gammedian
+        # nuMAD = sqrt(1/gammedian**2*nugamMAD**2 + nugammedian**2/gammedian**4*gamMAD**2)
 
-    scat_fig = px.scatter(x = nuvalues, y = gamvalues, title="ν vs. γ")
-    scat_fig.update_layout(xaxis_title="ν", yaxis_title="γ")
-    scat_fig.update_traces(hovertemplate='<b>%{text}</b><br><br>' +
-        'ν: %{x}<br>' +
-        'γ: %{y}<br>',
-        text=selected_genes)
+        alphamedian = median(alphavalues)
 
-    # c = st.number_input("Enter the value for constant νγ", value=nugammedian, step=0.001, format="%.3f")
-
-
-    # hprblparam = [arcsinh((n-g)/(2*sqrt(n*g))) for n,g in zip(nuvalues, gamvalues)]
-    # hprblmedian = median(hprblparam)
-    # hprblMAD = median(abs(t - hprblmedian) for t in hprblparam)
-
-    # Create x values for the curve
-    numin = min(nuvalues)
-    numax = max(nuvalues)
-    nustep = (numax-numin)/100
-    x_curve = [numin+n*nustep for n in range(100)]
-    y_curve = [nugammedian / x for x in x_curve]
-
-    # Add the curve to the scatter plot
-    scat_fig.add_trace(go.Scatter(x=x_curve, y=y_curve, mode='lines', name='νγ=c'))
-
-    # gamma = (cosh(hprblmedian) - sinh(hprblmedian))*sqrt(nugammedian)
-    # nu = nugammedian/gamma
-
-    scat_fig.add_trace(go.Scatter(x=[nuest], y=[gammedian], mode='markers', marker=dict(color='red',), name='Estimate'))
-
-    log_scale = st.checkbox("Switch axes to log scale")
-    if log_scale:
-        scat_fig.update_xaxes(type="log")
-        scat_fig.update_yaxes(type="log")
-
-    st.write(scat_fig)
+        scat_fig = px.scatter(x = nuvalues, y = gamvalues, title="ν vs. γ")
+        scat_fig.update_layout(xaxis_title="ν", yaxis_title="γ")
+        scat_fig.update_traces(hovertemplate='<b>%{text}</b><br><br>' +
+            'ν: %{x}<br>' +
+            'γ: %{y}<br>',
+            text=selected_genes)
 
 
-    st.text(f"Volume Ratio ν:\t\t {round(nuest, 4)} +- {round(1.48*nuMAD, 4)}")
-    st.text(f"Burst Rate γ:\t\t {round(gammedian, 4)} +- {round(1.48*gamMAD, 4)}")
+        # Create x values for the curve
+        numin = min(nuvalues)
+        numax = max(nuvalues)
+        nustep = (numax-numin)/100
+        x_curve = [numin+n*nustep for n in range(100)]
+        y_curve = [nugammedian / x for x in x_curve]
 
-    #####################
-    # Save Contaminant Parameters
-    #####################
-    st.text("Save the parameters. These will be used to refit the remaining genes. The fits will be regularised by the values of γ and νγ  from the contaminant fits.")
-    
-    if st.button("Save Contaminant parameters"):
-        with open(os.path.join(fitdir, f"{cond}_{rep}_ContaminantParameters.txt"), "w") as f:
-            f.write(f"{gammedian}\n")
-            f.write(f"{gamMAD}\n")
-            f.write(f"{nugammedian}\n")
-            f.write(f"{nugamMAD}")
-        st.success("The parameters have been saved.")
+        # Add the curve to the scatter plot
+        scat_fig.add_trace(go.Scatter(x=x_curve, y=y_curve, mode='lines', name='νγ=c'))
+
+        # gamma = (cosh(hprblmedian) - sinh(hprblmedian))*sqrt(nugammedian)
+        # nu = nugammedian/gamma
+
+        scat_fig.add_trace(go.Scatter(x=[nuest], y=[gammedian], mode='markers', marker=dict(color='red',), name='Estimate'))
+
+        log_scale = st.checkbox("Switch axes to log scale")
+        if log_scale:
+            scat_fig.update_xaxes(type="log")
+            scat_fig.update_yaxes(type="log")
+
+        st.write(scat_fig)
+
+
+        st.text(f"Volume Ratio ν:\t\t {round(nuest, 4)}")
+        st.text(f"Burst Rate γ:\t\t {round(gammedian, 4)}")
+
+        hist_fig = px.histogram(alphavalues)
+
+        hist_fig.update_xaxes(title_text="α")
+        hist_fig.update_layout(showlegend=False)
+        
+        hist_fig.add_shape(
+        type='line',
+        x0=alphamedian, y0=0,
+        x1=alphamedian, y1=1,
+        yref='paper',
+        line=dict(color='red')
+        )
+        st.write(hist_fig)
+
+        st.text(f"Dispersion α:\t\t {round(alphamedian, 4)}")
+        #####################
+        # Save Contaminant Parameters
+        #####################
+        st.text("Save the parameters. These will be used to refit the remaining genes.")
+        
+        if st.button("Save Contaminant parameters"):
+            with open(os.path.join(fitdir, f"{cond}_{rep}_FixedParameters_Full.txt"), "w") as f:
+                f.write(f"{nuest}\n")
+                f.write(f"{gammedian}\n")
+                f.write(f"{alphamedian}")
+            st.success("The parameters have been saved.")
+
+    elif contdist == "Poisson":
+        nugamvalues = param_df.loc[0, selected_genes]
+        alphavalues = param_df.loc[2, selected_genes]
+
+        nugammedian = median(nugamvalues)
+        alphamedian = median(alphavalues)
+
+        hist_fig = px.histogram(nugamvalues)
+
+        hist_fig.update_xaxes(title_text="νγ")
+        hist_fig.update_layout(showlegend=False)
+
+
+        hist_fig.add_shape(
+        type='line',
+        x0=nugammedian, y0=0,
+        x1=nugammedian, y1=1,
+        yref='paper',
+        line=dict(color='red')
+        )
+
+        st.write(hist_fig)
+
+        st.text(f"Poisson parameter νγ:\t\t {round(nugammedian, 4)}")
+
+        hist_fig2 = px.histogram(alphavalues)
+
+        hist_fig2.update_xaxes(title_text="α")
+        hist_fig2.update_layout(showlegend=False)
+        
+        hist_fig2.add_shape(
+        type='line',
+        x0=alphamedian, y0=0,
+        x1=alphamedian, y1=1,
+        yref='paper',
+        line=dict(color='red')
+        )
+        st.write(hist_fig2)
+
+        st.text(f"Dispersion α:\t\t {round(alphamedian, 4)}")
+         #####################
+        # Save Contaminant Parameters
+        #####################
+        st.text("Save the parameters. These will be used to refit the remaining genes. The fits will be regularised by the values of γ and νγ  from the contaminant fits.")
+        
+        if st.button("Save Contaminant parameters"):
+            with open(os.path.join(fitdir, f"{cond}_{rep}_FixedParameters_Poisson.txt"), "w") as f:
+                f.write(f"{nugammedian}\n")
+                f.write(f"{alphamedian}")
+            st.success("The parameters have been saved.")
+
 
     st.title("Run Full Fit")
 
-    if st.button("Full Gene Fit: will take a while"):
-        script_path = "./BarcodeContScripts/FitAllGenes.jl"
+    if st.button("Maximum Likelihood Fit: will take a while"):
+        script_path = "./BarcodeContScripts/FitAllGenesMLE.jl"
         
-        with subprocess.Popen(["julia", script_path, rep, cond], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
+        with subprocess.Popen(["julia", script_path, rep, cond, contdist], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
+            for line in proc.stdout:
+                st.write(line.strip())
+
+        # Wait for the subprocess to finish and get the return code
+        return_code = proc.wait()
+
+        if return_code == 0:
+            st.success("Fitting Complete!")
+        else:
+            st.error("The script encountered an error.")
+            st.write("Error message:")
+            st.write(proc.stderr)
+
+    if st.button("MoM Fit"):
+        script_path = "./BarcodeContScripts/FitAllGenesMoM.jl"
+        
+        with subprocess.Popen(["julia", script_path, rep, cond, contdist], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as proc:
             for line in proc.stdout:
                 st.write(line.strip())
 

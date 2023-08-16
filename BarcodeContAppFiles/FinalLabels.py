@@ -43,16 +43,16 @@ def create_histogram(df, selected_plasmids, numempty):
 
 
 
-def app(datadir, rep, cond):
+def app(datadir, rep, cond, contdist):
     
     
     # Use the title
     st.title('Final Labeling')
 
     # Use a sidebar for user inputs
-    datapath = os.path.join(datadir, f"{cond}_{rep}_Labeled.tsv")
+    datapath = os.path.join(datadir, f"{cond}_{rep}_Labeled_{contdist}.tsv")
     fitpath = os.path.join(datadir, "GeneFitData", "finalfits")
-    parampath = os.path.join(fitpath, f"{cond}_{rep}_Parameters.tsv")
+    # parampath = os.path.join(fitpath, f"{cond}_{rep}_Parameters.tsv")
 
     with open(os.path.join(datadir, f"{rep}_ddPCR.txt"), 'r') as file:
         ddPCR = float(file.read())
@@ -64,7 +64,7 @@ def app(datadir, rep, cond):
 
     # Load data
     df = load_data(datapath)
-    param_df = load_data(parampath)
+    # param_df = load_data(parampath)
 
 
     # Get list of plasmids
@@ -80,38 +80,38 @@ def app(datadir, rep, cond):
     # calculate fraction of nonzero entries for each column
     nonzero_fraction = df[plasmid_cols].mean()
 
-    # select 5th row of param_df
-    params = param_df.loc[4, plasmid_cols]
+    # # select 5th row of param_df
+    # params = param_df.loc[4, plasmid_cols]
 
-    # create a figure with two bar charts
-    fig2 = go.Figure()
+    # # create a figure with two bar charts
+    # fig2 = go.Figure()
 
-    # add bar chart for nonzero_fraction
-    fig2.add_trace(go.Bar(
-        x=plasmid_cols,
-        y=nonzero_fraction,
-        name='Fraction of cells labeled',
-        marker_color=histogram_color
-    ))
+    # # add bar chart for nonzero_fraction
+    # fig2.add_trace(go.Bar(
+    #     x=plasmid_cols,
+    #     y=nonzero_fraction,
+    #     name='Fraction of cells labeled',
+    #     marker_color=histogram_color
+    # ))
 
-    # add bar chart for params
-    fig2.add_trace(go.Bar(
-        x=plasmid_cols,
-        y=params,
-        name='Fraction including dropout (from fit)',
-        marker_color='orange'
-    ))
+    # # add bar chart for params
+    # fig2.add_trace(go.Bar(
+    #     x=plasmid_cols,
+    #     y=params,
+    #     name='Fraction including dropout (from fit)',
+    #     marker_color='orange'
+    # ))
 
-    # add a layout
-    fig2.update_layout(
-        title='Comparison of labeled and fit fractions',
-        xaxis_title='Plasmids',
-        yaxis_title='Fraction',
-        barmode='group',  # bars are placed beside each other
-        width=1200,  # width in pixels
-        height=600,  # height in pixels
-        xaxis_tickangle=-45  # rotate labels by 45 degrees
-    )
+    # # add a layout
+    # fig2.update_layout(
+    #     title='Comparison of labeled and fit fractions',
+    #     xaxis_title='Plasmids',
+    #     yaxis_title='Fraction',
+    #     barmode='group',  # bars are placed beside each other
+    #     width=1200,  # width in pixels
+    #     height=600,  # height in pixels
+    #     xaxis_tickangle=-45  # rotate labels by 45 degrees
+    # )
 
-    st.write("Can see the plasmid labels by hovering.")
-    st.plotly_chart(fig2)
+    # st.write("Can see the plasmid labels by hovering.")
+    # st.plotly_chart(fig2)
