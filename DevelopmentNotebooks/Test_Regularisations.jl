@@ -57,6 +57,12 @@ begin
 	kα, θα = α_mean^2/α_var, α_var/α_mean
 end
 
+# ╔═╡ 95e34375-4c15-48fe-839a-fd0717f0802a
+begin
+	# logPα(α) = (kα-1)*log(α) - α/θα
+	logPα(α) = -α/(100*α_med)
+end
+
 # ╔═╡ f6f1cd10-aa02-4b6f-895c-32ec22fa0803
 begin
 	#######################################################
@@ -78,7 +84,7 @@ begin
 	# Just the median will produce a good estimate
 	numcounts_selected = sum.(eachcol(allcountsdf[:, selected]))
 	
-	paramvec = [paramdf[4, plasmid] for plasmid in selected]
+	paramvec = [paramdf[2, plasmid] for plasmid in selected]
 	
 	medcount = median(paramvec, FrequencyWeights(numcounts_selected))
 	med = median(paramvec)
@@ -115,18 +121,6 @@ begin
 	fμvec = [fμMOM(mean(allcountsdf[!, plasmid]), νγmed) for plasmid in selected]
 	μvec = [μMOM(mean(allcountsdf[!, plasmid]), mean(allcountsdf[!, plasmid].^2), νγmed/γmed, γmed, αmed) for plasmid in selected]
 	fvec = fμvec ./ μvec
-end
-
-# ╔═╡ 95e34375-4c15-48fe-839a-fd0717f0802a
-begin
-	# logPα(α) = (kα-1)*log(α) - α/θα
-	logPα(α) = -α/(100*α_med)
-
-	f_mean = mean(fvec)
-	αf = 1.5
-	βf = αf*(1-f_mean)/f_mean
-
-	logPf(f) = (αf-1)*log(f) + (βf-1)*log(1-f)
 end
 
 # ╔═╡ befb945e-0534-4eea-9e20-fe39a6706a6a

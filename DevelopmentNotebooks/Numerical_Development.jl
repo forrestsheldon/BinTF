@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.22
+# v0.19.27
 
 using Markdown
 using InteractiveUtils
@@ -7,11 +7,12 @@ using InteractiveUtils
 # ╔═╡ ea0dc62a-a3e3-11ed-11c7-415e14e982b7
 begin
 	using Pkg
-	Pkg.activate("Project.toml")
+	Pkg.activate("../Project.toml")
 end
 
 # ╔═╡ 1fd386df-2836-4cd8-8a24-c3118d221790
 begin
+	using Roots
 	using Distributions, StatsBase
 	using Plots, Plots.PlotMeasures, StatsPlots
 	using Optim, TaylorSeries
@@ -29,17 +30,17 @@ First we set some parameters to test with
 
 # ╔═╡ e93e30e9-f5f5-45e5-99bf-a1f81908c099
 begin
-	ν = 5e-2
-	γ = 0.5
-	ρ = 0.2
+	λ = 0.02
+	ν = 5e-3
+	γ = λ/ν
+	ρ = 0.5
 	μ = 100
-	α = 0.5
+	α = 0.8
 	f = 0.1
 
 	trueparam = (ν, γ, ρ, μ, α, f)
 	
 	numsamples = 1e7
-
 end
 
 # ╔═╡ d5101c3d-cd36-4e1c-a2d3-5261ae997ae0
@@ -103,16 +104,17 @@ By expanding the generating functions we can produce histograms
 
 # ╔═╡ c031d021-b2b6-4875-91e8-f5073ef480fd
 begin
-	countlim = maximum(keys(noisefreq))-8
+	countlim = maximum(keys(noisefreq))-3
 	
 	ana = taylor_expand(gCont, order = countlim).coeffs
 	emp = [haskey(noisefreq, k) ? noisefreq[k] : 0 for k in 0:countlim]
 	poisson = taylor_expand(gCPoiss, order = countlim).coeffs
 	
-	groupedbar(0:countlim, [emp ana poisson], label=false, xlabel="RNA count", ylabel="P(D)", xlim = [-0.7, countlim-0.5], xticks=0:10, title="ν=$(ν), γ=$(γ), ρ=$(ρ), μ=$(μ), α=$(α)", size=(600, 350), tickfontsize=12)
-	groupedbar!(0:countlim, [emp ana poisson], label=["Empirical" "Exact" "Poisson"], yaxis=:log10, inset=(1, bbox(0.31, 0.25, 0.69, 0.72, :bottom, :left)), subplot = 2, xlabel = "RNA count", xlim = (-1, countlim-0.5), xticks=0:2:10, ylim =(1e-11, 1), tickfontsize=12, legendfontsize=10, legend=:bottomleft)
+	groupedbar(0:countlim, [emp ana poisson], label=false, xlabel="RNA Count", ylabel="P(D)", xlim = [-0.7, countlim-0.5], xticks=0:10, title="ν=$(ν), γ=$(γ), ρ=$(ρ), μ=$(μ), α=$(α)", size=(600, 350), tickfontsize=12, labelfontsize=14, lw=0)
+	
+	groupedbar!(0:countlim, [emp ana poisson], label=["Empirical" "Exact" "Poisson"], yaxis=:log10, inset=(1, bbox(0.4, 0.23, 0.6, 0.72, :bottom, :left)), subplot = 2, xlabel = "RNA Count", xlim = (-1, countlim-0.5), xticks=0:2:10, ylim =(1e-11, 1), tickfontsize=10, legendfontsize=10, legend=:bottomleft, lw=0)
 
-	# savefig("./Plots/ExactHist_Poisson.png")
+	# savefig("../Plots/ExactHist_Poisson.png")
 end
 
 # ╔═╡ 1dfb0517-8529-4715-a0d7-018cead56ecf
@@ -219,11 +221,14 @@ $$\nu = \frac{\langle E\rangle}{\langle C\rangle}\frac{\langle C^2\rangle - \lan
 """
 
 # ╔═╡ 99fab631-16a2-42ce-ad18-e3a60c985667
-reducedparam = [ν, γ, ρ*μ, α, f]
+begin
+	reducedparam = [ν, γ, ρ*μ, α, f]
+	poissonparam = [ν*γ, ρ*μ, α, f]
+end
 
 # ╔═╡ 31f2e4b6-5e1b-4277-86e7-55f3c03d1450
 begin
-	function MoMinitial(countdict, thresh)
+	function MoMtest(countdict, thresh)
 		E1i = 0
 		E2i = 0
 		nxi = 0
@@ -260,7 +265,8 @@ begin
 	end
 	
 	simcountdict = countmap(simcounts)
-	initial = MoMinitial(simcountdict, 5)
+	initial = MoMtest(simcountdict, 5)
+	initialpois = [initial[1]*initial[2], initial[3:end]...]
 	# Not bad!
 end
 
@@ -300,6 +306,8 @@ begin
 			gseq(z) = gC(z)*(f*gE(z) + (1-f))
 	
 			plist = taylor_expand(gseq, order = maxcount).coeffs
+			# for numerical errors at very small probabilities
+			plist[plist .<= 0] .= eps(typeof(plist[1]))
 			
 			sum(-nc*log(plist[c+1]) for (c, nc) in countdict) / sumcounts
 	
@@ -309,7 +317,7 @@ begin
 	end
 	
 	lower = [0., 0., 0., 0., 0.]
-	upper = [1., 1e3, 1e3, 10, 1.]
+	upper = [1., 1e3, 1e5, 100, 1.]
 	
 	res = fitgene_MLE(simcountdict, lower, upper, initial)
 end
@@ -330,12 +338,250 @@ begin
 	maxcounts = maximum(keys(simcountdict))
 	
 	
-
+	pcont = taylor_expand(gCf, order = maxcounts).coeffs
+	pcontex = taylor_expand(z->gCf(z)*gEf(z), order = maxcounts).coeffs
 	pseqlist = taylor_expand(gseqf, order=maxcounts).coeffs
 
 	plot(0:maxcounts, pseqlist, ylim = (0, 0.02))
 	plot!(0:maxcounts, [get(simcountdict, c, 0)/numsimcounts for c in 0:maxcounts])
 end
+
+# ╔═╡ b0672e37-530f-4da1-ad73-c24e1170bc43
+begin
+	xlim = (0, 140)
+	xticks = [0, 100, 200]
+	ylim = (0, 0.004)
+	yticks = [0.0, 0.002, 0.004]
+	
+	plot(0:maxcounts, [get(simcountdict, c, 0)/numsimcounts for c in 0:maxcounts], color = 1, lw=3, label="Counts")
+
+	plot!(0:maxcounts, (1-ff).*pcont, lw=3, label="Contaminant")
+	plot!(0:maxcounts, ff.*pcontex, lw=3, label="Exp+Cont", c=5)
+	
+	# plot!(plotcounts, pseqlist.+4e-5, lw=3, label="Total")
+	
+	plot!(xlim=xlim, xticks = xticks, ylim=ylim, yticks=yticks, size=(600, 300), tickfontsize=16, legendfontsize=12)
+
+	# savefig("../Plots/Simulated_ZoomCounts.png")
+
+end
+
+# ╔═╡ f5424f56-6d78-41f1-a895-897377546423
+md"""
+### Generating function fits
+"""
+
+# ╔═╡ 4c820b67-23af-4a04-8e4d-06f3d9e70402
+# begin
+# 	Gemp(z) = sum(nc*z^c for (c, nc) in simcountdict)/numsimcounts
+
+# 	function objectiveg(param)
+# 		ν, γ, ρμ, α, f = param
+# 		dz = 0.01
+# 		gE(z) = GNB(z, ρμ, α)
+# 		gEν(z) = GNB(z, ρμ*ν, α)
+# 		gC(z) = Gpois(gEν(z), f*γ)
+# 		gseq(z) = gC(z)*(f*gE(z) + (1-f))
+	
+# 		sum((gseq(z)-Gemp(z))^2*dz for z in dz:dz:1)
+# 	end
+	
+# 	objectiveg(initial)
+# end
+
+# ╔═╡ 9a692ce9-8c37-4426-ae60-a4109eb43a5d
+# resg = Optim.optimize(objectiveg, lower, upper, initial)
+
+# ╔═╡ 318925af-739a-4893-a660-76e239256aff
+# resg.minimizer
+
+# ╔═╡ 76649067-a0ce-4aff-b4e8-5c1ea7274d9d
+# abs.(resg.minimizer .- reducedparam)./reducedparam
+
+# ╔═╡ 6807e4e4-5887-4a13-bfd0-3ea0eb70e7f3
+# begin
+# 	νg, γg, ρμg, αg, fg = resg.minimizer
+# 	gEg(z) = GNB(z, ρμg, αg)
+# 	gEνg(z) = GNB(z, ρμg*νg, αg)
+# 	gCg(z) = Gpois(gEνg(z), fg*γg)
+# 	gseqg(z) = gCg(z)*(fg*gEg(z) + (1-fg))
+# end
+
+# ╔═╡ 2f9a15f4-d1ab-4baf-a422-92d24837c487
+# begin
+	
+# 	plot(0:0.01:1, [Gemp(z) for z in 0:0.01:1])
+# 	plot!(0:0.01:1, [gseqg(z) for z in 0:0.01:1])
+# end
+
+# ╔═╡ fdb01519-b8d3-475f-8b28-60e84813d329
+# begin
+# 	pseqglist = taylor_expand(gseqg, order=maxcounts).coeffs
+	
+# 	plot(0:maxcounts, pseqglist, ylim = (0, 0.02))
+# 	plot!(0:maxcounts, [get(simcountdict, c, 0)/numsimcounts for c in 0:maxcounts])
+# end
+
+# ╔═╡ beffd53e-d905-4448-b089-b03a373b1d35
+# begin
+# 	zvalues = [0.]
+# 	nz = 20
+# 	Δg = (Gemp(1) - Gemp(0))/nz
+	
+# 	for n in 1:nz
+# 		push!(zvalues, fzero(z->Gemp(z) - (Gemp(0)+n*Δg), 0, 1))
+# 	end
+# end
+
+# ╔═╡ 0620ffd5-c094-4649-a220-aee05bc9b30e
+# begin
+# 	function objectivegz(param)
+# 		ν, γ, ρμ, α, f = param
+# 		gE(z) = GNB(z, ρμ, α)
+# 		gEν(z) = GNB(z, ρμ*ν, α)
+# 		gC(z) = Gpois(gEν(z), f*γ)
+# 		gseq(z) = gC(z)*(f*gE(z) + (1-f))
+	
+# 		Gemp(z) = sum(nc*z^c for (c, nc) in simcountdict)/numsimcounts
+		
+# 		sum(((gseq(z1)-Gemp(z1))^2+(gseq(z2)-Gemp(z2))^2)/2*(z2-z1)  for (z1,z2) in zip(zvalues[1:end-1], zvalues[2:end]))
+# 	end
+	
+# 	objectivegz(initial)
+# end
+
+# ╔═╡ eafcf8a8-ba24-4cb6-bdbf-0352c21a008f
+# resgz = Optim.optimize(objectivegz, lower, upper, initial)
+
+# ╔═╡ 0b2b4594-8d73-42d2-9d93-d6487d82e048
+# resgz.minimizer
+
+# ╔═╡ b47265bf-d6f3-409d-a97b-9f535c94225b
+# abs.(resgz.minimizer .- reducedparam)./reducedparam
+
+# ╔═╡ 3a67dfd7-ef4d-4b24-b640-3c62bcdc942e
+# begin
+# 	νgz, γgz, ρμgz, αgz, fgz = resg.minimizer
+# 	gEgz(z) = GNB(z, ρμgz, αgz)
+# 	gEνgz(z) = GNB(z, ρμgz*νgz, αgz)
+# 	gCgz(z) = Gpois(gEνgz(z), fgz*γgz)
+# 	gseqgz(z) = gCgz(z)*(fgz*gEgz(z) + (1-fgz))
+# end
+
+# ╔═╡ 660f0812-63c7-41cc-a576-7a296d3c8289
+# begin
+# 	pseqgzlist = taylor_expand(gseqgz, order=maxcounts).coeffs
+	
+# 	plot(0:maxcounts, pseqgzlist, ylim = (0, 0.02))
+# 	plot!(0:maxcounts, [get(simcountdict, c, 0)/numsimcounts for c in 0:maxcounts])
+# end
+
+# ╔═╡ 0361d0bc-5ec1-4f73-9567-605cd0d364bc
+# begin
+# 	lowerpois = [0., 0., 0., 0.]
+# 	upperpois = [1., 1e5, 100, 1.]
+# 	function objectivegzpois(param)
+# 		λ, ρμ, α, f = param
+# 		gE(z) = GNB(z, ρμ, α)
+# 		gC(z) = Gpois(z, λ*f*ρμ)
+# 		gseq(z) = gC(z)*(f*gE(z) + (1-f))
+	
+# 		Gemp(z) = sum(nc*z^c for (c, nc) in simcountdict)/numsimcounts
+		
+# 		sum(((gseq(z1)-Gemp(z1))^2+(gseq(z2)-Gemp(z2))^2)/2*(z2-z1)  for (z1,z2) in zip(zvalues[1:end-1], zvalues[2:end]))
+# 	end
+	
+# 	objectivegzpois(initialpois)
+# end
+
+# ╔═╡ 6cf630e3-8ebe-404a-acf3-42de1f7f23a5
+# resgzpois = Optim.optimize(objectivegzpois, lowerpois, upperpois, initialpois)
+
+# ╔═╡ 0e290a6c-31be-49fd-ad2b-03b58c89d918
+# resgzpois.minimizer
+
+# ╔═╡ 70f02cec-4caa-4bbf-bdf0-c46e7ced0b86
+# abs.(resgzpois.minimizer .- poissonparam)./poissonparam
+
+# ╔═╡ a6faa73a-df7c-4d8b-8f24-10ca8c38b8ae
+# begin
+# 	λgzp, ρμgzp, αgzp, fgzp = resgzpois.minimizer
+# 	gEgzp(z) = GNB(z, ρμgzp, αgzp)
+# 	gCgzp(z) = Gpois(z, λgzp*fgzp*ρμgzp)
+# 	gseqgzp(z) = gCgzp(z)*(fgzp*gEgzp(z) + (1-fgzp))
+# end
+
+# ╔═╡ c080f143-fc5e-4c30-822d-1021d7036d4b
+# begin
+# 	pseqgzplist = taylor_expand(gseqgzp, order=maxcounts).coeffs
+	
+# 	plot(0:maxcounts, pseqgzplist, ylim = (0, 0.02))
+# 	plot!(0:maxcounts, [get(simcountdict, c, 0)/numsimcounts for c in 0:maxcounts])
+# end
+
+# ╔═╡ 276d9af3-9cce-483e-9b8b-087131acfc8a
+md"""
+### Convergence
+"""
+
+# ╔═╡ 424f59c4-b537-485f-b6fc-6ebc9ee0eb6f
+begin
+	
+	numcountvec = [1000, 2000, 4000, 6000, 8000, 10000]
+	errν = [[] for n in numcountvec]
+	errγ = [[] for n in numcountvec]
+	errμ = [[] for n in numcountvec]
+	errα = [[] for n in numcountvec]
+	errf = [[] for n in numcountvec]
+	errνγ = [[] for n in numcountvec]
+	
+	for (nidx, numsimcounts) in enumerate(numcountvec)
+		for _ in 1:100
+			simcounts = sampleseq(numsimcounts, trueparam...)
+			simcountdict = countmap(simcounts)
+			initial = MoMtest(simcountdict, 5)
+			res = fitgene_MLE(simcountdict, lower, upper, initial)
+			νf, γf, ρμf, αf, ff = res.minimizer
+	
+			push!(errν[nidx], (νf-ν)/ν)
+			push!(errγ[nidx], (γf-γ)/γ)
+			push!(errμ[nidx], (ρμf-ρ*μ)/(ρ*μ))
+			push!(errα[nidx], (αf-α)/α)
+			push!(errf[nidx], (ff-f)/f)
+			push!(errνγ[nidx], (νf*γf - ν*γ)/(ν*γ))
+		end
+	end
+
+end
+
+# ╔═╡ ca77d91d-8ff2-4a4b-b330-96889e7affad
+begin
+	errvar = errf
+	scatter()
+	for (idx, nc) in enumerate(numcountvec)
+		scatter!([numcountvec[idx] for _ in errν[idx]], errvar[idx], markerstrokewidth=0, color = 1, alpha=0.2, label = false)
+	end
+	plot!(numcountvec, [mean(e) for e in errvar], label = "Mean")
+	
+end
+
+# ╔═╡ 4ba17ac7-aeeb-4ea7-85bc-a02219570bb3
+histogram(errvar[1])
+
+# ╔═╡ 6e61189c-f823-480b-afb7-5392a2f0ecab
+begin
+	
+	plot(numcountvec, [var(e) for e in errvar])
+	scatter!(numcountvec, [var(e) for e in errvar], markerstrokewidth=0, color=1)
+
+	plot!(yaxis = :log10, xaxis=:log10)
+end
+
+# ╔═╡ 586b4f00-4b85-4ca0-97a1-8eaed9b1fb95
+var(errvar[1]), var(errvar[end])
+
+# ╔═╡ 21f8e18f-50cb-442a-9cb9-4088063f1a98
+(log(var(errvar[end])) - log(var(errvar[1])))/(log(numcountvec[end]) - log(numcountvec[1]))
 
 # ╔═╡ Cell order:
 # ╠═ea0dc62a-a3e3-11ed-11c7-415e14e982b7
@@ -363,3 +609,32 @@ end
 # ╠═c70a53df-c408-41c4-a0a3-683c1d65c891
 # ╠═f56dc1b7-b6cd-4d67-bc45-19450c604d97
 # ╠═48b37d5a-cf46-4eaa-9b2e-14b2115ef0c7
+# ╠═b0672e37-530f-4da1-ad73-c24e1170bc43
+# ╟─f5424f56-6d78-41f1-a895-897377546423
+# ╠═4c820b67-23af-4a04-8e4d-06f3d9e70402
+# ╠═9a692ce9-8c37-4426-ae60-a4109eb43a5d
+# ╠═318925af-739a-4893-a660-76e239256aff
+# ╠═76649067-a0ce-4aff-b4e8-5c1ea7274d9d
+# ╠═6807e4e4-5887-4a13-bfd0-3ea0eb70e7f3
+# ╠═2f9a15f4-d1ab-4baf-a422-92d24837c487
+# ╠═fdb01519-b8d3-475f-8b28-60e84813d329
+# ╠═beffd53e-d905-4448-b089-b03a373b1d35
+# ╠═0620ffd5-c094-4649-a220-aee05bc9b30e
+# ╠═eafcf8a8-ba24-4cb6-bdbf-0352c21a008f
+# ╠═0b2b4594-8d73-42d2-9d93-d6487d82e048
+# ╠═b47265bf-d6f3-409d-a97b-9f535c94225b
+# ╠═3a67dfd7-ef4d-4b24-b640-3c62bcdc942e
+# ╠═660f0812-63c7-41cc-a576-7a296d3c8289
+# ╠═0361d0bc-5ec1-4f73-9567-605cd0d364bc
+# ╠═6cf630e3-8ebe-404a-acf3-42de1f7f23a5
+# ╠═0e290a6c-31be-49fd-ad2b-03b58c89d918
+# ╠═70f02cec-4caa-4bbf-bdf0-c46e7ced0b86
+# ╠═a6faa73a-df7c-4d8b-8f24-10ca8c38b8ae
+# ╠═c080f143-fc5e-4c30-822d-1021d7036d4b
+# ╟─276d9af3-9cce-483e-9b8b-087131acfc8a
+# ╠═424f59c4-b537-485f-b6fc-6ebc9ee0eb6f
+# ╠═ca77d91d-8ff2-4a4b-b330-96889e7affad
+# ╠═4ba17ac7-aeeb-4ea7-85bc-a02219570bb3
+# ╠═6e61189c-f823-480b-afb7-5392a2f0ecab
+# ╠═586b4f00-4b85-4ca0-97a1-8eaed9b1fb95
+# ╠═21f8e18f-50cb-442a-9cb9-4088063f1a98

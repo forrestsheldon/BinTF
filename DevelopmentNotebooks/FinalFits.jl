@@ -14,7 +14,7 @@ end
 begin
 	using StatsBase
 	using TaylorSeries
-	using CSV, DataFrames
+	using DataFrames, CSV, JSON
 	using Plots, Plots.PlotMeasures, StatsPlots
 	using Printf
 	using Colors
@@ -28,355 +28,466 @@ md"""
 ### Load Data
 """
 
-# ╔═╡ 02d9a29a-b282-48c2-a883-c06295f576b9
+# ╔═╡ ab46ed63-338f-4297-94d1-0bda0b9a9704
 begin
+	#######################################################
+	# Set paths and parameters for screen
+	#######################################################
 	replist = ["R01", "R02"]
 	condlist = ["withoutAmp", "withAmp"]
+	contdist = "Full"
+	
+	datapathprefix = "../Data"
+	
+	rep = replist[1]
+	cond = condlist[1]
+	
+	datapath(cond, rep) = joinpath(datapathprefix, "$(cond)_"*join(replist))
+	outputpath(cond, rep) = joinpath(datapath(cond, rep), "GeneFitData", "allfits")
+	
+	countpath(cond, rep) = joinpath(datapath(cond, rep), "$(cond)_$(rep)_CellCounts.tsv")
+	parampath(cond, rep) = joinpath(datapath(cond, rep), "GeneFitData", "contaminantfits", "$(cond)_$(rep)_ContaminantParameters_$(contdist).txt")
+	noBCcells(cond, rep) = parse(Int, readline(joinpath(datapath(cond, rep), "$(cond)_$(rep)_noBCcells.txt")))
+	ddPCR(cond, rep) = parse(Float64, readline(joinpath(datapath(cond, rep), "$(rep)_ddPCR.txt")))
+
+	contfitpath(cond, rep) = joinpath(datapath(cond, rep), "GeneFitData", "contaminantfits","$(cond)_$(rep)_Parameters_$(contdist).tsv")
+	selectedpath(cond, rep) = joinpath(datapath(cond, rep), "GeneFitData", "contaminantfits", "$(cond)_$(rep)_SelectedFits_$(contdist).json")
+
+	labelpath(cond, rep) = joinpath(datapath(cond, rep), "$(cond)_$(rep)_Labeled_$(contdist).tsv")
+	finalfitpath(cond, rep) = joinpath(datapath(cond, rep), "GeneFitData", "allfits","$(cond)_$(rep)_Parameters_$(contdist).tsv")
+	
 end
 
-# ╔═╡ 7dfdca3e-ad92-4c15-8709-fa32b3496197
-begin
-	datapath = "../Data"
-	withoutAmpPath = joinpath(datapath, "withoutAmp_R01R02")
-	withAmpPath = joinpath(datapath, "withAmp_R01R02")
-	
-	wo1celldf = DataFrame(CSV.File(joinpath(withoutAmpPath, "withoutAmp_R01_CellCounts.tsv"), delim="\t"))
-	wo1noBCcells = parse(Int, readline(joinpath(withoutAmpPath, "withoutAmp_R01_noBCcells.txt")))
-	# wo1finalcelldf = DataFrame(CSV.File(joinpath(withoutAmpPath, "withoutAmp_R01_Labeled.tsv"), delim="\t"))
-
-	wo2celldf = DataFrame(CSV.File(joinpath(withoutAmpPath, "withoutAmp_R02_CellCounts.tsv"), delim="\t"))
-	wo2noBCcells = parse(Int, readline(joinpath(withoutAmpPath, "withoutAmp_R02_noBCcells.txt")))
-	# wo2finalcelldf = DataFrame(CSV.File(joinpath(withoutAmpPath, "withoutAmp_R02_Labeled.tsv"), delim="\t"))
-	
-	post1celldf = DataFrame(CSV.File(joinpath("./Data/PostAmp_R01R02/PostAmp_R01_CellCounts.tsv"), delim="\t"))
-	post1noBCcells = parse(Int, readline("./Data/PostAmp_R01R02/PostAmp_R01_noBCcells.txt"))
-	post1finalcelldf = DataFrame(CSV.File("./Data/PostAmp_R01R02/PostAmp_R01_Labeled.tsv", delim="\t"))
-	
-	post2celldf = DataFrame(CSV.File(joinpath("./Data/PostAmp_R01R02/PostAmp_R02_CellCounts.tsv"), delim="\t"))
-	post2noBCcells = parse(Int, readline("./Data/PostAmp_R01R02/PostAmp_R02_noBCcells.txt"))
-	post2finalcelldf = DataFrame(CSV.File("./Data/PostAmp_R01R02/PostAmp_R02_Labeled.tsv", delim="\t"))
-
-	R01ddPCR = parse(Float64, readline("./Data/PreAmp_R01R02/R01_ddPCR.txt"))
-	R02ddPCR = parse(Float64, readline("./Data/PreAmp_R01R02/R02_ddPCR.txt"))
-end
-
-# ╔═╡ 50580bae-24ff-40c8-98f9-5600589572fc
-R01ddPCR, R02ddPCR
-
-# ╔═╡ 86042e1e-3ed1-4fd4-8296-8f25c61c3f16
+# ╔═╡ 33361e24-b008-4996-b36e-90ffbd1c9874
 md"""
-### Summary Figures
+### Contaminant Fit
 """
 
-# ╔═╡ 96f7230d-1f62-45f8-91e8-0b4f7dd28348
+# ╔═╡ 1c1e08d4-dc8d-46bb-a275-b8146b1f75c0
 begin
-	wo1noisefitdf = DataFrame(CSV.File(joinpath(withoutAmpPath, "GeneFitData", "contaminantfits","withoutAmp_R01_Parameters.tsv"), delim="\t"))
-	w1noisefitdf = DataFrame(CSV.File(joinpath(withAmpPath, "GeneFitData", "contaminantfits","withAmp_R01_Parameters.tsv"), delim="\t"))
+	contparamdfwo1 = load_tsv(contfitpath("withoutAmp", "R01"))
+	selectedwo1 = JSON.parse(readline(selectedpath("withoutAmp", "R01")))
+	contparamdfwo1 = contparamdfwo1[:,selectedwo1]
 
-	wo2noisefitdf = DataFrame(CSV.File(joinpath(withoutAmppath, "GeneFitData", "contaminantfits","withoutAmp_R02_Parameters.tsv"), delim="\t"))
-	w2noisefitdf = DataFrame(CSV.File(joinpath(withAmpPath, "GeneFitData", "contaminantfits","withAmp_R02_Parameters.tsv"), delim="\t"))
+	contparamdfwo2 = load_tsv(contfitpath("withoutAmp", "R02"))
+	selectedwo2 = JSON.parse(readline(selectedpath("withoutAmp", "R02")))
+	contparamdfwo2 = contparamdfwo2[:,selectedwo2]
+
+	contparamdfw1 = load_tsv(contfitpath("withAmp", "R01"))
+	selectedw1 = JSON.parse(readline(selectedpath("withAmp", "R01")))
+	contparamdfw1 = contparamdfw1[:,selectedw1]
+
+	contparamdfw2 = load_tsv(contfitpath("withAmp", "R02"))
+	selectedw2 = JSON.parse(readline(selectedpath("withAmp", "R02")))
+	contparamdfw2 = contparamdfw2[:,selectedw2]
 end
 
-# ╔═╡ 4778354d-4208-4b65-ba8f-67f5f86233b9
-pre1noisefitdf
-
-# ╔═╡ 5961d6a2-4b13-4865-b6be-0e8ece20d5f2
-post1noisefitdf
-
-# ╔═╡ e0a3512d-2b66-4f5c-9bda-8c7a0712ecbf
+# ╔═╡ 87d16f2c-b2a9-44e6-a4ec-88eda65a8739
 begin
-	pre1names = names(pre1noisefitdf)
-	pre2names = names(pre2noisefitdf)
+	νwo1 = Vector(contparamdfwo1[1,:])
+	γwo1 = Vector(contparamdfwo1[2,:])
+	νγmedwo1 = median(νwo1.*γwo1)
+
+	νwo2 = Vector(contparamdfwo2[1,:])
+	γwo2 = Vector(contparamdfwo2[2,:])
+	νγmedwo2 = median(νwo2.*γwo2)
 	
-	pre1νvalues = Vector(pre1noisefitdf[1,:])
-	pre1γvalues = Vector(pre1noisefitdf[2,:])
+	νw1 = Vector(contparamdfw1[1,:])
+	γw1 = Vector(contparamdfw1[2,:])
+	νγmedw1 = median(νw1.*γw1)
 
-	pre2νvalues = Vector(pre2noisefitdf[1,:])
-	pre2γvalues = Vector(pre2noisefitdf[2,:])
-	
-	pre1prod = median(pre1νvalues.*pre1γvalues)
-	pre2prod = median(pre2νvalues.*pre2γvalues)
-
-
-	post1names = names(post1noisefitdf)
-	post2names = names(post2noisefitdf)
-	
-	post1νvalues = Vector(post1noisefitdf[1,:])
-	post1γvalues = Vector(post1noisefitdf[2,:])
-
-	post2νvalues = Vector(post2noisefitdf[1,:])
-	post2γvalues = Vector(post2noisefitdf[2,:])
-
-	post1prod = median(post1νvalues.*post1γvalues)
-	post2prod = median(post2νvalues.*post2γvalues)
+	νw2 = Vector(contparamdfw2[1,:])
+	γw2 = Vector(contparamdfw2[2,:])
+	νγmedw2 = median(νw2.*γw2)
 end
 
-# ╔═╡ 0c15417f-d723-4672-8039-c33564b12f61
-colorpalette = theme_palette(:auto)
-
-# ╔═╡ b501569c-59e7-46d4-a059-02708c44eb99
-bluegrad = cgrad([:white, colorpalette[1], :black])
-
-# ╔═╡ 07dd1ce6-7791-4b37-9695-24ecb8dd6fcb
-myblues = cgrad([get(bluegrad, 0.1), colorpalette[1], get(bluegrad, 0.8)])
-
-# ╔═╡ 35134891-e3dd-459c-8703-97235be886ea
-orangegrad = cgrad([:white, colorpalette[2], :black])
-
-# ╔═╡ b09d1534-311a-4fd2-83d2-d1a9628b0c34
-myoranges = cgrad([get(orangegrad, 0.1), colorpalette[2], get(orangegrad, 0.8)])
-
-# ╔═╡ ff72b3c2-c4e1-458a-9f57-34fbcd694327
+# ╔═╡ dc7489d6-35f5-46f5-a978-e16abbf8072d
 begin
-	scatter(pre1νvalues, pre1γvalues, markerstrokecolor=:auto, label="Replicate 1")
+	colorpalette = theme_palette(:auto)
+	bluegrad = cgrad([:white, colorpalette[1], :black])
+	myblues = cgrad([get(bluegrad, 0.1), colorpalette[1], get(bluegrad, 0.8)])
+end
+
+# ╔═╡ 95ee2eb2-a3f1-4e0a-99d9-3913d6334e71
+begin
+	orangegrad = cgrad([:white, colorpalette[2], :black])
+	myoranges = cgrad([get(orangegrad, 0.1), colorpalette[2], get(orangegrad, 0.8)])
+end
+
+# ╔═╡ 29302f0f-4ccb-4905-a8d4-fc79934809df
+begin
+	scatter(νwo1, γwo1, markerstrokecolor=:auto, label="Replicate 1")
 	linebounds = 10^-4:10^-5:0.0047
-	plot!(linebounds, pre1prod./linebounds, color=1, lw=2, label=false)
+	plot!(linebounds, νγmedwo1./linebounds, color=1, lw=2, label=false)
 
-	scatter!(pre2νvalues, pre2γvalues, color=2, markerstrokecolor=:auto, label="Replicate 2", tickfontsize=16, xticks=[0, 0.002, 0.004], yticks=[0, 100, 200], xlim=[0, 0.005], ylim = [0, 200], size=(600, 350))
-	plot!(linebounds, pre2prod./linebounds, color=2, lw=2, label=false, legendfontsize=12)
-	# savefig("./Plots/PreScatter.png")
+	scatter!(νwo2, γwo2, color=2, markerstrokecolor=:auto, label="Replicate 2", tickfontsize=16, xticks=[0, 0.002, 0.004], yticks=[0, 100, 200], xlim=[0, 0.005], ylim = [0, 200], size=(600, 350))
+	plot!(linebounds, νγmedwo2./linebounds, color=2, lw=2, label=false, legendfontsize=12)
+	# savefig("../Plots/PreScatter.png")
 end
 
-# ╔═╡ 487249ca-ddcf-4dbd-8c79-dde5639cfb29
+# ╔═╡ b13cb5c8-e27b-47ef-b523-a95c73b4a23f
+md"""
+To look for evidence of convergence, we pull the count numbers for each gene
+"""
+
+# ╔═╡ 68822eff-a59b-486b-9ac3-5c9ae7af734d
 begin
-	
-	pre1numcounts = sum.(eachcol(pre1celldf[!,pre1names]))
-	# pre1numcounts = sum.(c .!= 0 for c in eachcol(pre1celldf[!,pre1names]))
-	pre1perm = sortperm(pre1numcounts)
-	pre2numcounts = sum.(eachcol(pre2celldf[!,pre2names]))
-	# pre2numcounts = sum.(c .!= 0 for c in eachcol(pre2celldf[!,pre2names]))
-	pre2perm = sortperm(pre2numcounts)
-	
-	scatter(pre1νvalues[pre1perm], pre1γvalues[pre1perm], zcolor=log.(pre1numcounts[pre1perm]), colorbar=false, c=myblues, markerstrokewidth=0, xlim=(0, 0.005))
-	# plot!(linebounds, pre1prod./linebounds, color=1, lw=2)
+	wo1countdf = load_tsv(countpath("withoutAmp", "R01"))
+	wo2countdf = load_tsv(countpath("withoutAmp", "R02"))
 
+	w1countdf = load_tsv(countpath("withAmp", "R01"))
+	w2countdf = load_tsv(countpath("withAmp", "R02"))
+end
 
-	scatter!(pre2νvalues[pre2perm], pre2γvalues[pre2perm], zcolor=log.(pre2numcounts[pre2perm]), colorbar=false, c=myoranges, markerstrokewidth=0, alpha=0.7)
-	# plot!(linebounds, pre2prod./linebounds, color=2, lw=2)
+# ╔═╡ aed79458-b324-4662-a1c3-7368768a4047
+begin
+	# wo1numcounts = sum.(eachcol(wo1countdf[!,selectedwo1]))
+	# wo2numcounts = sum.(eachcol(wo2countdf[!,selectedwo2]))
+
+	# w1numcounts = sum.(eachcol(w1countdf[!,selectedw1]))
+	# w2numcounts = sum.(eachcol(w2countdf[!,selectedw2]))
+
+	wo1numcounts = sum.(c .!= 0 for c in eachcol(wo1countdf[!,selectedwo1]))
+	wo2numcounts = sum.(c .!= 0 for c in eachcol(wo2countdf[!,selectedwo2]))
+
+	w1numcounts = sum.(c .!= 0 for c in eachcol(w1countdf[!,selectedw1]))
+	w2numcounts = sum.(c .!= 0 for c in eachcol(w2countdf[!,selectedw2]))
+
+end
+
+# ╔═╡ 972a908d-5fa8-406e-8832-4f30af6ffdb6
+begin
+	wo1perm = sortperm(wo1numcounts)
+	wo2perm = sortperm(wo2numcounts)
+	
+	scatter(νwo1[wo1perm], γwo1[wo1perm], zcolor=log.(wo1numcounts[wo1perm]), colorbar=false, c=myblues, markerstrokewidth=0, xlim=(0, 0.005))
+
+	scatter!(νwo2[wo2perm], γwo2[wo2perm], zcolor=log.(wo2numcounts[wo2perm]), colorbar=false, c=myoranges, markerstrokewidth=0, alpha=0.7)
+	
 	plot!(size=(800, 500), ylims=(0, 200), xlim=(0, 0.0047), legend=false, tickfontsize=16)
 
 end
 
-# ╔═╡ 7c18dc4c-fab0-48ba-8693-1e0158cb029e
-# begin
-# 	minalpha = 0.3
-
-# 	pre1alpha = pre1numcounts[pre1perm]
-# 	pre1alpha = pre1alpha .- pre1alpha[1]
-# 	pre1alpha = pre1alpha ./ pre1alpha[end]
-# 	pre1alpha = minalpha .+ pre1alpha.*(1-minalpha)
-	
-	
-# 	scatter(pre1νvalues[pre1perm], pre1γvalues[pre1perm], alpha=pre1alpha, c=1, markerstrokewidth=0, xlim=(0, 0.0047), ylim=(0, 200))
-
-
-# 	pre2alpha = pre2numcounts[pre2perm]
-# 	pre2alpha = pre2alpha .- pre2alpha[1]
-# 	pre2alpha = pre2alpha ./ pre2alpha[end]
-# 	pre2alpha = minalpha .+ pre2alpha.*(1-minalpha)
-	
-# 	scatter!(pre2νvalues[pre2perm], pre2γvalues[pre2perm], alpha=pre2alpha, markerstrokewidth=0)
-
-# end
-
-# ╔═╡ 88e75c2b-7b0f-4625-979c-6b48bd034d06
-# begin
-# 	scatter(1 ./pre1numcounts, pre1γvalues, xlim=(0, 0.00011), ylim=(0, 100), markerstrokewidth=0)
-# 	scatter!(1 ./pre2numcounts, pre2γvalues, xlim=(0, 0.00011), ylim=(0, 100), markerstrokewidth=0)
-# end
-
-# ╔═╡ 78ca2110-df58-4032-a5f5-21d6a9fcae59
-median(pre1γvalues), median(pre2γvalues)
-
-# ╔═╡ c9b28149-b848-4cae-8de7-70533628c7dd
-# begin
-# 	scatter(1 ./pre1numcounts, pre1νvalues, markerstrokewidth=0)
-# 	scatter!(1 ./pre2numcounts, pre2νvalues, markerstrokewidth=0)
-# 	plot!(xlim=(0, 0.00011), ylim=(0, 0.006))
-# end
-
-# ╔═╡ b98ae866-3d06-4126-b58d-537eaab6b504
+# ╔═╡ e2f55db3-c8d5-4f69-b540-59e7ca551abd
 begin
-	scatter(post1νvalues, post1γvalues, markerstrokecolor=:auto)
+	scatter(νw1, γw1, markerstrokecolor=:auto)
 	
-	scatter!(post2νvalues, post2γvalues, markerstrokecolor=:auto)
+	scatter!(νw2, γw2, markerstrokecolor=:auto)
 end
 
-# ╔═╡ d35b5774-cb3d-4214-9a70-48dbad96ca84
-median(post1γvalues), median(post2γvalues)
-
-# ╔═╡ 054d8a56-a86d-4883-be0e-901b01893570
+# ╔═╡ 653b2c74-2dca-4988-865c-02d99b1ee49f
 begin
-	post1numcounts = sum.(eachcol(post1celldf[!,post1names]))
-	# post1numcounts = sum.(c .!= 0 for c in eachcol(post1celldf[!,post1names]))
-
-	post1perm = sortperm(post1numcounts)
+	w1perm = sortperm(w1numcounts)
+	w2perm = sortperm(w2numcounts)
 	
-	post2numcounts = sum.(eachcol(post2celldf[!,post2names]))
-	# post2numcounts = sum.(c .!= 0 for c in eachcol(post2celldf[!,post2names]))
+	scatter(νw1[w1perm], γw1[w1perm], zcolor=log.(w1numcounts[w1perm]), colorbar=false, c=myblues, markerstrokewidth=0)
 
-	post2perm = sortperm(post2numcounts)
+	scatter!(νw2[w2perm], γw2[w2perm], zcolor=log.(w2numcounts[w2perm]), colorbar=false, c=myoranges, markerstrokewidth=0, alpha=0.7)
 	
-	scatter(post1νvalues[post1perm], post1γvalues[post1perm], zcolor=log.(post1numcounts[post1perm]), colorbar=false, c=myblues, markerstrokewidth=0)
+	# plot!(size=(800, 500), ylims=(0, 200), xlim=(0, 0.0047), legend=false, tickfontsize=16)
+
 end
 
-# ╔═╡ 7c28ffc9-3720-4808-ae17-cabad2d89c68
-# begin
-# 	scatter(1 ./post1numcounts, post1γvalues, ylim=(0, 50), markerstrokewidth=0)
-# 	scatter!(1 ./post2numcounts, post2γvalues, ylim=(0, 50), markerstrokewidth=0)
-# end
+# ╔═╡ 293a0eb4-d300-4e67-8388-dd489e2dd427
+md"""
+Assemble these into a single figure
+"""
 
-# ╔═╡ c1e1a053-6d49-4ae8-a1d1-c6fa5f712c3c
-# begin
-# 	scatter(1 ./post1numcounts, post1νvalues, markerstrokewidth=0)
-# 	scatter!(1 ./post2numcounts, post2νvalues, markerstrokewidth=0)
-# 	plot!(xlim=(0, 0.00014), ylim=(0, 0.02))
-# end
-
-# ╔═╡ 60f09855-a237-4259-8c6d-98eaf946c40d
-# begin
-# 	post1alpha = post1numcounts[post1perm]
-# 	post1alpha = post1alpha .- post1alpha[1]
-# 	post1alpha = post1alpha ./ post1alpha[end]
-# 	post1alpha = minalpha .+ post1alpha.*(1-minalpha)
-
-# 	post2alpha = post2numcounts[post2perm]
-# 	post2alpha = post2alpha .- post2alpha[1]
-# 	post2alpha = post2alpha ./ post2alpha[end]
-# 	post2alpha = minalpha .+ post2alpha.*(1-minalpha)
-# end
-
-# ╔═╡ 09fbc6b9-94e4-4109-9173-571bf648f35a
+# ╔═╡ 10cdb8f2-95c2-429f-b7e4-a39a99f6db65
 begin
-	scatter(pre1νvalues[pre1perm], pre1γvalues[pre1perm], label=nothing, zcolor=log.(pre1numcounts[pre1perm]), color=myblues, markerstrokewidth=0)
-	pre1linebounds = [1.1*10^-4, 4*10^-3]
-	plot!(pre1linebounds, pre1prod./pre1linebounds, color = 1, lw=2, xlim=(8*10^-5, 2*10^-2), ylim=(6, 2.5*10^2), label=:none)
+	scatter(νwo1[wo1perm], γwo1[wo1perm], label=nothing, zcolor=log.(wo1numcounts[wo1perm]), color=myblues, markerstrokewidth=0)
+	wo1linebounds = [1.1*10^-4, 4*10^-3]
+	plot!(wo1linebounds, νγmedwo1./wo1linebounds, color = 1, lw=2, label=:none)
 	# scatter!([NaN], [NaN], markerstrokewidth=0, color=colorpalette[1])  # Add dummy series
 
 
-	scatter!(pre2νvalues[pre2perm], pre2γvalues[pre2perm], label=nothing, zcolor=log.(pre2numcounts[pre2perm]), color=myoranges, markerstrokewidth=0)
-	pre2linebounds = [10^-4, 3*10^-3]
-	plot!(pre2linebounds, pre2prod./pre2linebounds, color = 2, lw=2, label=:none)
-	# scatter!([NaN], [NaN], markerstrokewidth=0, color=colorpalette[2])  # Add dummy series
+	scatter!(νwo2[wo2perm], γwo2[wo2perm], label=nothing, zcolor=log.(wo2numcounts[wo2perm]), color=myoranges, markerstrokewidth=0)
+	wo2linebounds = [10^-4, 3*10^-3]
+	plot!(wo2linebounds, νγmedwo2./wo2linebounds, color = 2, lw=2, label=:none)
+	# # scatter!([NaN], [NaN], markerstrokewidth=0, color=colorpalette[2])  # Add dummy series
 	
-	scatter!(post1νvalues, post1γvalues,xscale=:log10, yscale=:log10, label=:none, zcolor=log.(post1numcounts[post1perm]), color=myblues, markerstrokewidth=0)
-	post1linebounds = [6*10^(-3), 2*10^-2]
-	plot!(post1linebounds, post1prod./post1linebounds, color = 1, lw=2, label=:none)
+	scatter!(νw1[w1perm], γw1[w1perm], label=:none, zcolor=log.(w1numcounts[w1perm]), color=myblues, markerstrokewidth=0)
+	w1linebounds = [6*10^(-3), 2*10^-2]
+	plot!(w1linebounds, νγmedw1./w1linebounds, color = 1, lw=2, label=:none)
 
-	scatter!(post2νvalues, post2γvalues, markerstrokecolor=:auto, label=:none, tickfontsize=15, zcolor=log.(post2numcounts[post2perm]), color=myoranges, markerstrokewidth=0, colorbar=:false)
-	post2linebounds = [6*10^(-3), 1.6*10^-2]
-	plot!(post2linebounds, post2prod./post2linebounds, color = 2, lw=2, label=:none, size=(600, 350), legendfontsize=12)
-	
-	# savefig("./Plots/LogScatter.png")
+	scatter!(νw2[w2perm], γw2[w2perm], markerstrokecolor=:auto, label=:none, tickfontsize=15, zcolor=log.(w2numcounts[w2perm]), color=myoranges, markerstrokewidth=0)
+	w2linebounds = [6*10^(-3), 1.6*10^-2]
+	plot!(w2linebounds, νγmedw2./w2linebounds, color = 2, lw=2, label=:none, size=(600, 350), legendfontsize=12)
+
+	plot!(xscale=:log10, yscale=:log10, colorbar=:false, xlim=(8*10^-5, 3*10^-2), ylim=(6, 2.5*10^2))
+	# savefig("../Plots/LogScatter.png")
 end
 
-# ╔═╡ 1cc1ee57-3d3b-48aa-941e-8bf70b3e3132
-# begin
-# 	pre1post1names = [p for p in pre1names if p∈ post1names]
-	
-# 	pre1ρμvalues = Vector(pre1noisefitdf[3,pre1post1names])
-	
-# 	post1ρμvalues = Vector(post1noisefitdf[3,pre1post1names])
-
-# 	scatter(pre1ρμvalues, post1ρμvalues)
-# 	plot!([0, 250], [0, 250])
-# end
-
-# ╔═╡ 037c7154-c014-476a-9b36-e2605884be04
+# ╔═╡ 7f274c2e-dc27-4cb4-92dc-4a649ca3e3e3
 md"""
-### Parameters after Regularisation
+To show concentration of γ and α we look at their finite size scaling plot
 """
 
-# ╔═╡ 7345e9fd-438e-4117-89a8-b7a88cb70dc4
+# ╔═╡ ff34c6db-35f8-4e36-9f6c-f75227b39c5c
 begin
-	pre1fitdf = DataFrame(CSV.File(joinpath("./Data/PreAmp_R01R02/", "GeneFitData", "allfits","PreAmp_R01_Parameters.tsv"), delim="\t"))
-	post1fitdf = DataFrame(CSV.File(joinpath("./Data/PostAmp_R01R02/", "GeneFitData", "allfits","PostAmp_R01_Parameters.tsv"), delim="\t"))
-
-	pre2fitdf = DataFrame(CSV.File(joinpath("./Data/PreAmp_R01R02/", "GeneFitData", "allfits","PreAmp_R02_Parameters.tsv"), delim="\t"))
-	post2fitdf = DataFrame(CSV.File(joinpath("./Data/PostAmp_R01R02/", "GeneFitData", "allfits","PostAmp_R02_Parameters.tsv"), delim="\t"))
+	scatter(1 ./wo1numcounts[wo1perm], γwo1[wo1perm], markerstrokewidth=0,  xlabel="Inverse Total Counts 1/N", ylabel="γ")
+	plot!(1 ./wo1numcounts[wo1perm], [median(γwo1) for _ in wo1perm])
+	plot!(1 ./wo1numcounts[wo1perm], [median(γwo1, FrequencyWeights(wo1numcounts)) for _ in wo1perm])
 end
 
-# ╔═╡ e101d9ac-1b7d-4cb3-896a-edc2b9ecbcde
+# ╔═╡ ece369cf-5820-42c5-b4ea-5c7fa9f6cd01
+median(γwo1, FrequencyWeights(wo1numcounts))
+
+# ╔═╡ 7332a6d2-ed2c-4619-85fc-c1aa26f228e6
 begin
-	pre1allνvalues = Vector(pre1fitdf[1, :])
-	pre1allγvalues = Vector(pre1fitdf[2, :])
-	pre1allθvalues = Vector(pre1fitdf[6, :])
-
-	pre2allνvalues = Vector(pre2fitdf[1, :])
-	pre2allγvalues = Vector(pre2fitdf[2, :])
-	pre2allθvalues = Vector(pre2fitdf[6, :])
-
-	post1allνvalues = Vector(post1fitdf[1, :])
-	post1allγvalues = Vector(post1fitdf[2, :])
-	post1allθvalues = Vector(post1fitdf[6, :])
-
-	post2allνvalues = Vector(post2fitdf[1, :])
-	post2allγvalues = Vector(post2fitdf[2, :])
-	post2allθvalues = Vector(post2fitdf[6, :])
-
+	scatter(1 ./wo2numcounts[wo2perm], γwo2[wo2perm], markerstrokewidth=0,  xlabel="Inverse Total Counts 1/N", ylabel="γ")
+	plot!(1 ./wo2numcounts[wo2perm], [median(γwo2) for _ in wo2perm])
+	plot!(1 ./wo2numcounts[wo2perm], [median(γwo2, FrequencyWeights(wo2numcounts)) for _ in wo2perm])
+	
 end
 
-# ╔═╡ 9441c065-2d92-43ad-964a-51f2838971c2
-histogram(post2allθvalues)
+# ╔═╡ 5ef3aa92-7638-464c-8714-1fe78f6aaa3c
+median(γwo2, FrequencyWeights(wo2numcounts))
 
-# ╔═╡ 53c56589-b43e-4e23-9bfb-6b1097715ad0
-scatter(Vector(pre1fitdf[5,:]).*Vector(pre1fitdf[3,:]), Vector(pre1fitdf[6,:]))
+# ╔═╡ 01ea329b-4781-401b-aa8d-a7ee347a5b81
+begin
+	scatter(1 ./w1numcounts[w1perm], γw1[w1perm], markerstrokewidth=0,  xlabel="Inverse Total Counts 1/N", ylabel="γ")
+	plot!(1 ./w1numcounts[w1perm], [median(γw1) for _ in w1perm])
+	plot!(1 ./w1numcounts[w1perm], [median(γw1, FrequencyWeights(w1numcounts)) for _ in w1perm])
+end
 
-# ╔═╡ 482c62fa-12f5-48fd-bdb7-9ce62bceaabc
+# ╔═╡ d2858b3d-e9b1-49d5-8310-136fb8cba12f
+median(γw1, FrequencyWeights(w1numcounts))
+
+# ╔═╡ a55d2c29-284e-418c-a683-c793d3db8444
+begin
+	scatter(1 ./w2numcounts[w2perm], γw2[w2perm], markerstrokewidth=0,  xlabel="Inverse Total Counts 1/N", ylabel="γ")
+	plot!(1 ./w2numcounts[w2perm], [median(γw2) for _ in w2perm])
+	plot!(1 ./w2numcounts[w2perm], [median(γw2, FrequencyWeights(w2numcounts)) for _ in w2perm])
+end
+
+# ╔═╡ 43c4454f-b901-4a53-a9fc-6fe0e32520db
+median(γw2, FrequencyWeights(w2numcounts))
+
+# ╔═╡ b8fd4822-e4d0-4cf8-9efa-589f9205ae28
+begin
+	αwo1 = Vector(contparamdfwo1[4,:])
+	αwo2 = Vector(contparamdfwo2[4,:])
+
+	αw1 = Vector(contparamdfw1[4,:])
+	αw2 = Vector(contparamdfw2[4,:])
+	
+	histogram(αwo1, nbins = 20)
+end
+
+# ╔═╡ a29d9e64-6325-442e-9d9a-2e26730f818c
+begin
+	scatter(1 ./wo1numcounts[wo1perm], αwo1[wo1perm], markerstrokewidth=0,  xlabel="Inverse Total Counts 1/N", ylabel="α")
+	plot!(1 ./wo1numcounts[wo1perm], [median(αwo1) for _ in wo1perm])
+	plot!(1 ./wo1numcounts[wo1perm], [median(αwo1, FrequencyWeights(wo1numcounts)) for _ in wo1perm])
+end
+
+# ╔═╡ 086176d3-54a5-4572-b888-5a8fbd770ab1
+begin
+	scatter(1 ./wo2numcounts[wo2perm], αwo2[wo2perm], markerstrokewidth=0, xlabel="Inverse Total Counts 1/N", ylabel="α")
+	plot!(1 ./wo2numcounts[wo2perm], [median(αwo2) for _ in wo2perm])
+	plot!(1 ./wo2numcounts[wo2perm], [median(αwo2, FrequencyWeights(wo2numcounts)) for _ in wo2perm])
+end
+
+# ╔═╡ 5969e565-cab4-483f-b0b2-66205a9293db
+begin
+	scatter(1 ./w1numcounts[w1perm], αw1[w1perm], markerstrokewidth=0, xlabel="Inverse Total Counts 1/N", ylabel="α")
+	plot!(1 ./w1numcounts[w1perm], [median(αw1) for _ in w1perm])
+	plot!(1 ./w1numcounts[w1perm], [median(αw1, FrequencyWeights(w1numcounts)) for _ in w1perm])
+end
+
+# ╔═╡ fe4c4791-d51e-4a34-a539-874f9dc82aae
+begin
+	scatter(1 ./w2numcounts[w2perm], αw2[w2perm], markerstrokewidth=0, xlabel="Inverse Total Counts 1/N", ylabel="γ")
+	plot!(1 ./w2numcounts[w2perm], [median(αw2) for _ in w2perm])
+	plot!(1 ./w2numcounts[w2perm], [median(αw2, FrequencyWeights(w2numcounts)) for _ in w2perm])
+end
+
+# ╔═╡ c3828bf3-8401-477e-899a-b6ac375552ff
 md"""
 ### Labeling Histograms
 """
 
-# ╔═╡ 1614673f-5bc8-4907-a89c-95d826dbedf7
+# ╔═╡ ab30e5f7-a0ea-4e5e-8124-7a1052eef7e5
 begin
-	celldf = pre1celldf
-	noBCcells = pre1noBCcells
-	ddPCR = R01ddPCR
-	finalcelldf = pre1finalcelldf
-	noisefitdf = pre1noisefitdf
+	wo1labeldf = load_tsv(labelpath("withoutAmp", "R01"))
+	wo2labeldf = load_tsv(labelpath("withoutAmp", "R02"))
 	
-	numuniqueplasmids = vcat([sum(val != 0 for val in row) for row in eachrow(celldf[:, 2:end])], zeros(Int, noBCcells))
+	w1labeldf = load_tsv(labelpath("withAmp", "R01"))
+	w2labeldf = load_tsv(labelpath("withAmp", "R02"))
 end
 
-# ╔═╡ 777d7c02-a033-4060-a11d-3b70278edafa
-ddPCR
-
-# ╔═╡ a336c29d-502c-4727-977b-578c9798ce53
-mplasmid = mean(numuniqueplasmids)
-
-# ╔═╡ 97919f1b-5428-44dc-928d-b9ee2f141a9e
+# ╔═╡ 523a26af-9b92-45a3-9f2f-8b6f50b5a790
 begin
-	hist = fit(Histogram, numuniqueplasmids, nbins=80)
-	bar(hist.edges[1][1:end-1], hist.weights, legend=false, linecolor=:match, xlim=(-0.7, hist.edges[1][end]+2), ylim=(0, 1.05*maximum(hist.weights)), size=(600, 200), tickfontsize=16, xticks=[0, 20, 40, 60], yticks=[0, 800, 1600])
-	vline!([mplasmid], line=(2, 4))
-	vline!([ddPCR], line=(:black, 4))
+	wo1noBC = noBCcells("withoutAmp", "R01")
+	wo2noBC = noBCcells("withoutAmp", "R02")
+
+	w1noBC = noBCcells("withAmp", "R01")
+	w2noBC = noBCcells("withAmp", "R02")
+end
+
+# ╔═╡ 8a6b0fe0-9be0-4b3d-80c7-ac4bae5ac822
+begin
+	wo1ddPCR = ddPCR("withoutAmp", "R01")
+	wo2ddPCR = ddPCR("withoutAmp", "R02")
+
+	w1ddPCR = ddPCR("withAmp", "R01")
+	w2ddPCR = ddPCR("withAmp", "R02")
+end
+
+# ╔═╡ c6757638-8730-457e-9dd5-0c12c78ba4cf
+begin
+	wo1uniqueinit = vcat([sum(val != 0 for val in row) for row in eachrow(wo1countdf[:, 2:end])], zeros(Int, wo1noBC))
+	wo2uniqueinit = vcat([sum(val != 0 for val in row) for row in eachrow(wo2countdf[:, 2:end])], zeros(Int, wo2noBC))
+	
+	w1uniqueinit = vcat([sum(val != 0 for val in row) for row in eachrow(w1countdf[:, 2:end])], zeros(Int, w1noBC))
+	w2uniqueinit = vcat([sum(val != 0 for val in row) for row in eachrow(w2countdf[:, 2:end])], zeros(Int, w2noBC))
+end
+
+# ╔═╡ c484975f-8bc9-413b-b28a-35947491cf60
+begin
+	wo1minit = mean(wo1uniqueinit)
+	wo1hist = fit(Histogram, wo1uniqueinit, nbins=80)
+	bar(wo1hist.edges[1][1:end-1], wo1hist.weights, legend=false, linecolor=:match, xlim=(-0.7, wo1hist.edges[1][end]+2), ylim=(0, 1.05*maximum(wo1hist.weights)), size=(600, 200), tickfontsize=16, xticks=[0, 20, 40, 60], yticks=[0, 800, 1600])
+	vline!([wo1minit], line=(2, 4))
+	vline!([wo1ddPCR], line=(:black, 4))
 
 	# Fill the region between a and b
-	fill_between_x = [ddPCR, mplasmid, mplasmid, ddPCR]
-	fill_between_y = [0, 0, 2*maximum(hist.weights), 2*maximum(hist.weights)]
-	plot!(fill_between_x, fill_between_y, fill=(0, 0.4, 1))
-	# savefig("./Plots/CopyHist_PreBin_$(condition)_$(replicate).png")
+	wo1fill_between_x = [wo1ddPCR, wo1minit, wo1minit, wo1ddPCR]
+	wo1fill_between_y = [0, 0, 2*maximum(wo1hist.weights), 2*maximum(wo1hist.weights)]
+	plot!(wo1fill_between_x, wo1fill_between_y, fill=(0, 0.4, 1))
+	# savefig("../Plots/CopyHist_PreLabel_withoutAmp_R01.png")
 end
 
-# ╔═╡ 8e6e6608-f389-4c9d-9730-e13fb91a2319
+# ╔═╡ d09e3965-d0fc-499e-b303-804ec35e7023
 begin
-	finalnumplasmids = vcat([sum(val != 0 for val in row) for row in eachrow(finalcelldf[:, 2:end])], zeros(Int, noBCcells))
-	finalmplasmid = mean(finalnumplasmids)
-end
-
-# ╔═╡ 1454ac4e-5c4f-4f36-bbfb-d95574695e0d
-begin
-	histfinal = fit(Histogram, finalnumplasmids, nbins=60)
-	bar(histfinal.edges[1][1:end-1], histfinal.weights, legend=false, linecolor=:match, xlim=(-0.7, 22), ylim=(0, 2200), size=(300, 200), tickfontsize=14, xticks=[0, 10, 20], yticks=[0, 1000, 2000])
-	vline!([finalmplasmid], line=(2, 4))
-	vline!([ddPCR], line=(:black, 4))
+	wo2minit = mean(wo2uniqueinit)
+	wo2hist = fit(Histogram, wo2uniqueinit, nbins=80)
+	bar(wo2hist.edges[1][1:end-1], wo2hist.weights, legend=false, linecolor=:match, xlim=(-0.7, wo2hist.edges[1][end]+2), ylim=(0, 1.05*maximum(wo2hist.weights)), size=(600, 200), tickfontsize=16, xticks=[0, 20, 40, 60], yticks=[0, 800, 1600])
+	vline!([wo2minit], line=(2, 4))
+	vline!([wo2ddPCR], line=(:black, 4))
 
 	# Fill the region between a and b
-	fill_between_xfinal = [ddPCR, finalmplasmid, finalmplasmid, ddPCR]
-	fill_between_yfinal = [0, 0, 2*maximum(histfinal.weights), 2*maximum(histfinal.weights)]
-	plot!(fill_between_xfinal, fill_between_yfinal, fill=(0, 0.4, :blue))
-	# savefig("./Plots/CopyHist_PostBin_$(condition)_$(replicate).png")
+	wo2fill_between_x = [wo2ddPCR, wo2minit, wo2minit, wo2ddPCR]
+	wo2fill_between_y = [0, 0, 2*maximum(wo2hist.weights), 2*maximum(wo2hist.weights)]
+	plot!(wo2fill_between_x, wo2fill_between_y, fill=(0, 0.4, 1))
+	# savefig("../Plots/CopyHist_PreLabel_withoutAmp_R02.png")
 end
+
+
+# ╔═╡ 071c0c0a-bc39-46bf-86bc-a88338e5e060
+begin
+	w1minit = mean(w1uniqueinit)
+	w1hist = fit(Histogram, w1uniqueinit, nbins=80)
+	bar(w1hist.edges[1][1:end-1], w1hist.weights, legend=false, linecolor=:match, xlim=(-0.7, w1hist.edges[1][end]+2), ylim=(0, 1.05*maximum(w1hist.weights)), size=(600, 200), tickfontsize=16, xticks=[0, 20, 40, 60], yticks=[0, 800, 1600])
+	vline!([w1minit], line=(2, 4))
+	vline!([w1ddPCR], line=(:black, 4))
+
+	# Fill the region between a and b
+	w1fill_between_x = [w1ddPCR, w1minit, w1minit, w1ddPCR]
+	w1fill_between_y = [0, 0, 2*maximum(w1hist.weights), 2*maximum(w1hist.weights)]
+	plot!(w1fill_between_x, w1fill_between_y, fill=(0, 0.4, 1))
+	# savefig("../Plots/CopyHist_PreLabel_withAmp_R01.png")
+end
+
+
+# ╔═╡ ac85e63f-df7c-4af1-9331-348c571bef7a
+begin
+	w2minit = mean(w2uniqueinit)
+	w2hist = fit(Histogram, w2uniqueinit, nbins=80)
+	bar(w2hist.edges[1][1:end-1], w2hist.weights, legend=false, linecolor=:match, xlim=(-0.7, w2hist.edges[1][end]+2), ylim=(0, 1.05*maximum(w2hist.weights)), size=(600, 200), tickfontsize=16, xticks=[0, 20, 40, 60], yticks=[0, 800, 1600])
+	vline!([w2minit], line=(2, 4))
+	vline!([w2ddPCR], line=(:black, 4))
+
+	# Fill the region between a and b
+	w2fill_between_x = [w2ddPCR, w2minit, w2minit, w2ddPCR]
+	w2fill_between_y = [0, 0, 2*maximum(w2hist.weights), 2*maximum(w2hist.weights)]
+	plot!(w2fill_between_x, w2fill_between_y, fill=(0, 0.4, 1))
+	# savefig("../Plots/CopyHist_PreLabel_withAmp_R02.png")
+end
+
+
+# ╔═╡ a52dde76-615a-4a19-832d-9e3ce635bc75
+begin
+	wo1uniquefinal = vcat([sum(val != 0 for val in row) for row in eachrow(wo1labeldf[:, 2:end])], zeros(Int, wo1noBC))
+	wo2uniquefinal = vcat([sum(val != 0 for val in row) for row in eachrow(wo2labeldf[:, 2:end])], zeros(Int, wo2noBC))
+	
+	w1uniquefinal = vcat([sum(val != 0 for val in row) for row in eachrow(w1labeldf[:, 2:end])], zeros(Int, w1noBC))
+	w2uniquefinal = vcat([sum(val != 0 for val in row) for row in eachrow(w2labeldf[:, 2:end])], zeros(Int, w2noBC))
+end
+
+# ╔═╡ 65d6643b-fea1-4816-8a5c-da485a3e9d5d
+begin
+	wo1mfinal = mean(wo1uniquefinal)
+	wo1histfinal = fit(Histogram, wo1uniquefinal, nbins=80)
+	bar(wo1histfinal.edges[1][1:end-1], wo1histfinal.weights, legend=false, linecolor=:match, xlim=(-0.7, 22), ylim=(0, 2600), size=(300, 200), tickfontsize=16, xticks=[0, 10, 20], yticks=[0, 1000, 2000])
+	vline!([wo1mfinal], line=(2, 4))
+	vline!([wo1ddPCR], line=(:black, 4))
+
+	# Fill the region between a and b
+	wo1fill_between_xfinal = [wo1ddPCR, wo1mfinal, wo1mfinal, wo1ddPCR]
+	wo1fill_between_yfinal = [0, 0, 2*maximum(wo1histfinal.weights), 2*maximum(wo1histfinal.weights)]
+	plot!(wo1fill_between_xfinal, wo1fill_between_yfinal, fill=(0, 0.4, 1))
+	# savefig("../Plots/CopyHist_PostLabel_withoutAmp_R01.png")
+end
+
+# ╔═╡ 16738e01-a06f-4330-ab9f-80aea36fa226
+wo1mfinal
+
+# ╔═╡ ecbe3dc0-af16-452e-8f6d-0a11b0ca22f4
+begin
+	wo2mfinal = mean(wo2uniquefinal)
+	wo2histfinal = fit(Histogram, wo2uniquefinal, nbins=80)
+	bar(wo2histfinal.edges[1][1:end-1], wo2histfinal.weights, legend=false, linecolor=:match, xlim=(-0.7, 22), ylim=(0, 2600), size=(300, 200), tickfontsize=16, xticks=[0, 10, 20], yticks=[0, 1000, 2000])
+	vline!([wo2mfinal], line=(2, 4))
+	vline!([wo2ddPCR], line=(:black, 4))
+
+	# Fill the region between a and b
+	wo2fill_between_xfinal = [wo2ddPCR, wo2mfinal, wo2mfinal, wo2ddPCR]
+	wo2fill_between_yfinal = [0, 0, 2*maximum(wo2histfinal.weights), 2*maximum(wo2histfinal.weights)]
+	plot!(wo2fill_between_xfinal, wo2fill_between_yfinal, fill=(0, 0.4, 1))
+	# savefig("../Plots/CopyHist_PostLabel_withoutAmp_R02.png")
+end
+
+
+# ╔═╡ 53532863-e43f-4fec-8f03-05a31c0ebe89
+wo2mfinal
+
+# ╔═╡ 6ddefc81-f4aa-4102-bcca-345371e1491e
+begin
+	w1mfinal = mean(w1uniquefinal)
+	w1histfinal = fit(Histogram, w1uniquefinal, nbins=80)
+	bar(w1histfinal.edges[1][1:end-1], w1histfinal.weights, legend=false, linecolor=:match, xlim=(-0.7, 22), ylim=(0, 2600), size=(300, 200), tickfontsize=16, xticks=[0, 10, 20], yticks=[0, 1000, 2000])
+	vline!([w1mfinal], line=(2, 4))
+	vline!([w1ddPCR], line=(:black, 4))
+
+	# Fill the region between a and b
+	w1fill_between_xfinal = [w1ddPCR, w1mfinal, w1mfinal, w1ddPCR]
+	w1fill_between_yfinal = [0, 0, 2*maximum(w1histfinal.weights), 2*maximum(w1histfinal.weights)]
+	plot!(w1fill_between_xfinal, w1fill_between_yfinal, fill=(0, 0.4, 1))
+	# savefig("../Plots/CopyHist_PostLabel_withAmp_R01.png")
+end
+
+# ╔═╡ cc5792d3-54f1-4f54-bd63-c290cfe00174
+w1mfinal
+
+# ╔═╡ af6006d3-614b-4e2b-b9ce-0dbfb0b3ec48
+begin
+	w2mfinal = mean(w2uniquefinal)
+	w2histfinal = fit(Histogram, w2uniquefinal, nbins=80)
+	bar(w2histfinal.edges[1][1:end-1], w2histfinal.weights, legend=false, linecolor=:match, xlim=(-0.7, 22), ylim=(0, 2600), size=(300, 200), tickfontsize=16, xticks=[0, 10, 20], yticks=[0, 1000, 2000])
+	vline!([w2mfinal], line=(2, 4))
+	vline!([w2ddPCR], line=(:black, 4))
+
+	# Fill the region between a and b
+	w2fill_between_xfinal = [w2ddPCR, w2mfinal, w2mfinal, w2ddPCR]
+	w2fill_between_yfinal = [0, 0, 2*maximum(w2histfinal.weights), 2*maximum(w2histfinal.weights)]
+	plot!(w2fill_between_xfinal, w2fill_between_yfinal, fill=(0, 0.4, 1))
+	# savefig("../Plots/CopyHist_PostLabel_withAmp_R02.png")
+end
+
+# ╔═╡ c1bc847d-b29b-4865-9a49-281adaa19062
+w2mfinal
 
 # ╔═╡ 6377a680-8d8e-4675-858f-427bb75db022
 md"""
@@ -385,7 +496,6 @@ md"""
 
 # ╔═╡ 70400124-5b17-4ad6-bddb-4a2715d0d7d2
 begin
-
 	function formcountdict(BC, BCdf, zerobackground)
 
 		genecounts = BCdf[:, BC]
@@ -404,24 +514,6 @@ begin
 	end
 end
 
-# ╔═╡ 7b028b95-79ee-4133-a986-64be7579c1df
-begin
-	TFlist = names(celldf)[2:end]
-end
-
-# ╔═╡ 127cd7d8-241d-40ff-a9f6-5e2e2f307d56
-begin
-	TFkept = []
-
-	# Filter for genes with at least 200 counts greater than 10
-	for TF in TFlist
-		if sum(celldf[:, TF] .>= 10) > 200
-			push!(TFkept, TF)
-		end
-	end
-	println("$(length(TFkept)) of $(length(TFlist)) Plasmids kept for fitting")
-end
-
 # ╔═╡ 1044643c-884f-4017-a7c8-55a129374cb9
 md"""
 ### Test Gene
@@ -429,8 +521,9 @@ md"""
 
 # ╔═╡ fdcea879-6ae0-4e74-b931-934e551f2fed
 begin
-	testTF = TFkept[15]
-	testcountdict = formcountdict(testTF, celldf, 0)
+	testTF = selectedw1[20]
+	testcountdict = formcountdict(testTF, wo1countdf, noBCcells("withoutAmp","R01"))
+	
 	testmax = maximum(keys(testcountdict))
 	testnumcounts = sum(values(testcountdict))
 	testcounts, testcountfreq = formcountfreq(testcountdict)
@@ -443,11 +536,18 @@ plot(testcounts, testcountfreq, ylim=(0, 0.003), label=false, xlabel="Counts", y
 testTF
 
 # ╔═╡ e310b53e-de2a-4295-9b69-6b7657e29951
-plotTF = "Plasmid_16"
+begin
+	plotTF = "Plasmid_47"
+	plotcond = "withoutAmp"
+	plotrep = "R01"
+	plotdf = load_tsv(countpath(plotcond, plotrep))
+	plotfit = load_tsv(contfitpath(plotcond, plotrep))
+	finalparamdf = load_tsv(finalfitpath(plotcond, plotrep))
+end
 
 # ╔═╡ dce8b0ee-6bf9-41da-8096-30cf02139cbc
 begin
-	plotcountdict = formcountdict(plotTF, celldf, 0)
+	plotcountdict = formcountdict(plotTF, plotdf, noBCcells(plotcond, plotrep))
 	plotmax = maximum(keys(plotcountdict))
 	plotnumcounts = sum(values(plotcountdict))
 	plotcounts, plotcountfreq = formcountfreq(plotcountdict)
@@ -457,24 +557,29 @@ end
 begin
 	plot(plotcounts, plotcountfreq, ylim=(0, 1), xlim=(0, plotmax+10), label=false, color = 1, lw=10, tickfontsize=16)
 	plot!(size=(600, 300))
-	# savefig("./Plots/AllCounts_R01_P16.png")
+	# savefig("../Plots/AllCounts_$(plotcond)_$(plotrep)_$(plotTF).png")
 end
 
 # ╔═╡ 41929758-8a1a-4e5d-8078-36e715fbb2a9
 begin
-	plot(plotcounts[1:6], plotcountfreq[1:6], fillrange=0, fillalpha=0.3, fillcolor=4, label=false)
+	t = 7
+	xlim = (0, 140)
+	xticks = [0, 100, 200]
+	ylim = (0, 0.003)
+	yticks = [0.0, 0.001, 0.002, 0.003]
+	plot(plotcounts[1:t], plotcountfreq[1:t], fillrange=0, fillalpha=0.3, fillcolor=4, label=false)
 	plot!(plotcounts, plotcountfreq, label=false, color = 1, lw=4, tickfontsize=16)  
 	
-	plot!(ylim=(0, 0.008), xlim=(0, 110),xticks = [0, 100], yticks=[0.0, 0.004, 0.008], size=(600, 300))
-	# savefig("./Plots/CountsZoomed_R01_P16.png")
+	plot!(xlim=xlim,xticks = xticks, ylim=ylim, yticks=yticks, size=(600, 300))
+	# savefig("../Plots/CountsZoomed_$(plotcond)_$(plotrep)_$(plotTF).png")
 end
 
 # ╔═╡ eb493270-6eec-4883-9237-c0b8862a332b
-sum(plotcountfreq[2:6])
+plotcountfreq[1], sum(plotcountfreq[2:t]), sum(plotcountfreq[t+1:end])
 
 # ╔═╡ 1fced61e-e061-42e5-b153-0d64f7d3d4b8
 begin
-	ν, γ, ρμ, α, f, threshold = noisefitdf[:, plotTF]
+	ν, γ, ρμ, α, f, threshold = plotfit[:, plotTF]
 	
 	gex(z) = GNB(z, ρμ, α)
 	gexν(z) = GNB(z, ρμ*ν, α)
@@ -486,9 +591,6 @@ begin
     pnolistlong = taylor_expand(gcont, order = plotcounts[end]).coeffs
 end
 
-# ╔═╡ 68bff31e-b982-4183-8c5a-8585aee5f47d
-ν
-
 # ╔═╡ 3db6e14f-aca3-44ed-bd3c-12319468b1ed
 begin
 	plot(plotcounts, plotcountfreq, color = 1, lw=3, label="Counts")
@@ -498,238 +600,252 @@ begin
 	
 	# plot!(plotcounts, pseqlist.+4e-5, lw=3, label="Total")
 	
-	plot!(ylim=(0, 0.008), xlim=(0, 110),xticks = [0, 100], yticks=[0.0, 0.004, 0.008], size=(600, 300), tickfontsize=16, legendfontsize=12)
-	savefig("./Plots/Fit_Pre_R01_P16.png")
+	plot!(xlim=xlim, xticks = xticks, ylim=ylim, yticks=yticks, size=(600, 300), tickfontsize=16, legendfontsize=12)
+	# savefig("../Plots/Fit_Pre_$(plotcond)_$(plotrep)_$(plotTF).png")
 end
 
-# ╔═╡ 31d069e8-3838-4686-9f05-8ae423f70c47
-# begin
-# 	testlower = [0., 0., 0., 0., 0.]
-# 	testupper = [1., 1e4, 1e4, 10, 1.]
-# 	testthresh = 10
-	
-# 	testres = fitgene_MLE(testcountdict, testlower, testupper, MoMinitial(testcountdict, testthresh))
-# end
-
-# ╔═╡ 426cd89c-25de-4c59-98cd-a0a976adf186
-# begin
-# 	νi, γi, μi, ri, fi = MoMinitial(testcountdict, testthresh)
-# 	gnoi(z) = Gnoise(z, νi, fi*γi, μi, ri)
-# 	gexi(z) = GNB(z, μi, ri)
-#     gnoexi(z) = gexi(z)*gnoi(z)
-#     gseqi(z) = fi*gnoexi(z) + (1-fi)*gnoi(z)
-	
-# 	ν, γ, μ, r, f = testres.minimizer
-
-# 	gno(z) = Gnoise(z, ν, f*γ, μ, r)
-# 	gex(z) = GNB(z, μ, r)
-#     gnoex(z) = gex(z)*gno(z)
-#     gseq(z) = f*gnoex(z) + (1-f)*gno(z)
-
-	
-	
-# 	pnoexlist=taylor_expand(z->f*gnoex(z), order=testmax).coeffs
-# 	peak = max(maximum(pnoexlist), 0.0015/4)
-
-# 	plot(testcounts, testcountfreq, ylim=(0, 0.003), xlim=(0, 0.75*testmax), label="Counts", xlabel="$(testTF) Count\nν=$(@sprintf("%.3g", ν)) , γ=$(@sprintf("%.1f", γ)) , μ=$(@sprintf("%.1f", μ)) , r=$(@sprintf("%.3g", r)), f=$(@sprintf("%.3g", f))", ylabel="Fraction of Droplets")
-	
-# 	plot!(0:testmax, taylor_expand(z->(1-f)*gno(z), order=testmax).coeffs, label="Noise", lw=2)
-
-# 	plot!(0:testmax, pnoexlist, label="Expression", lw=2)
-	
-# 	plot!(0:testmax, taylor_expand(z->gseq(z), order=testmax).coeffs .+ peak*2e-2, label="Mixture", lw=2)
-	
-# 	# plot!(0:testmax, taylor_expand(z->Gseq(z, MoMinitial(testcountdict, testthresh)...), order=testmax).coeffs, label="Initial", lw=2)
-# end
-
-# ╔═╡ af7132a5-7f3a-4c84-a093-c403387016d7
-# begin
-# # Make similar plots without labels for placing in panel figures
-# 	νfit, γfit, μfit, rfit, ffit = testres.minimizer
-	
-# 	pnoexlist=taylor_expand(z->ffit*Gnoex(z, νfit, ffit*γfit, μfit, rfit), order=testmax).coeffs
-# 	peak = max(maximum(pnoexlist), 0.0015/4)
-
-# 	plot(testcounts, testcountfreq, ylim=(0, 0.007), xlim=(0, 102), label="Counts", tickfontsize=12, legendfontsize=12, size=(500, 300), xticks=[0, 25, 50, 75, 100], yticks=[0., 0.002, 0.004, 0.006])#, xlabel="$(testTF) Count\nν=$(@sprintf("%.3g", νfit)) , γ=$(@sprintf("%.1f", γfit)) , μ=$(@sprintf("%.1f", μfit)) , r=$(@sprintf("%.3g", rfit)), f=$(@sprintf("%.3g", ffit))", ylabel="Fraction of Droplets")
-	
-# 	plot!(0:testmax, taylor_expand(z->(1-ffit)*Gnoise(z, νfit, ffit*γfit, μfit, rfit), order=testmax).coeffs, label="Noise", lw=2)
-
-# 	plot!(0:testmax, pnoexlist, label="Expression", lw=2)
-	
-# 	plot!(0:testmax, taylor_expand(z->Gseq(z, testres.minimizer...), order=testmax).coeffs, label="Mixture", lw=2)
-# 	plot!(0:testmax, taylor_expand(z->Gseq(z, MoMinitial(testcountdict, testthresh)...), order=testmax).coeffs, label="Initial", lw=2, legend=false)
-
-# 	savefig("Plots/GeneFit_$(runident)_Plasmid_$(testTF)_components.png")
-# end
-
-# ╔═╡ cbd23588-9a0f-4b99-ad6e-0c81506e25d6
+# ╔═╡ 3f9816ad-7661-45e4-88fe-6af36353720b
 md"""
-### Fit All Genes
+### Final Fits
 """
 
-# ╔═╡ ff816c47-ec1e-4969-ba98-585232eeca05
-# begin
-# 	fitres = []
-# 	thresholds = []
+# ╔═╡ aa008f08-94dd-4bfb-9648-e6b247a9b7dc
+begin
+	fitparam = finalparamdf[1:5, plotTF]
+	ff = fitparam[end]
+	gexf, gcontf, gseqf = genfuncs(fitparam...)
+
+	pnoexf = taylor_expand(z->gcontf(z)*gexf(z), order = plotcounts[end]).coeffs
+    pseqf = taylor_expand(gseqf, order = plotcounts[end]).coeffs
+    pnof = taylor_expand(gcontf, order = plotcounts[end]).coeffs
+end
+
+# ╔═╡ 1e595a25-dd80-4878-8cad-5666b9f5a817
+begin
+	plot(plotcounts, plotcountfreq, color = 1, lw=3, label="Counts")
+
+	plot!(plotcounts, (1-ff).*pnof, lw=3, label="Contaminant")
+	plot!(plotcounts, ff.*pnoexf, lw=3, label="Exp+Cont", c=5)
 	
-# 	thresh = 10
-# 	lower = [0., 0., 0., 0., 0.]
-# 	upper = [1., 1e4, 1e4, 10, 1.]
+	# plot!(plotcounts, pseqlist.+4e-5, lw=3, label="Total")
 	
-# 	for (TFidx, TF) in enumerate(TFkept)
-# 		countdict = formcountdict(TF, celldf, 0)
-# 		countmax = maximum(keys(countdict))
-# 		numcounts = sum(values(countdict))
-# 		counts, countfreq = formcountfreq(countdict)
+	plot!(xlim=xlim, xticks = xticks, ylim=ylim, yticks=yticks, size=(600, 300), tickfontsize=16, legendfontsize=12)
+	# savefig("../Plots/Fit_Post_$(plotcond)_$(plotrep)_$(plotTF).png")
+end
 
-# 		results = fitgene_MLE(countdict, lower, upper, MoMinitial(countdict, thresh))
-# 		push!(fitres, results)
-# 		println(TF)
-
-# 		νfit, γfit, μfit, rfit, ffit = results.minimizer
+# ╔═╡ ebdf1dec-89e3-41ef-bf85-69e112c420fe
+begin
+	BClistlow = [n for n in names(finalparamdf) if n ∉ union(selectedw1, selectedw2, selectedwo1, selectedwo2)]
 	
-# 		pnoexlist=taylor_expand(z->ffit*Gnoex(z, νfit, ffit*γfit, μfit, rfit), order=countmax).coeffs
-# 		peak = max(maximum(pnoexlist), 0.0015/4)
+	testTFlow = BClistlow[5]	
+end
 
-# 		pnolist = taylor_expand(z->(1-ffit)*Gnoise(z, νfit, ffit*γfit, μfit, rfit), order=countmax).coeffs
+# ╔═╡ efea7b8a-ab20-4aef-8156-e3f664a3dab7
+begin
+	plotcountdictl = formcountdict(testTFlow, plotdf, noBCcells(plotcond, plotrep))
+	plotmaxl = maximum(keys(plotcountdictl))
+	plotnumcountsl = sum(values(plotcountdictl))
+	plotcountsl, plotcountfreql = formcountfreq(plotcountdictl)
+end
 
-# 		push!(thresholds, counts[findfirst(pnoexlist .> pnolist)])
+# ╔═╡ 928e4c83-67a7-4c1c-8c82-0552f3348d82
+begin
+	fitparaml = finalparamdf[1:5, testTFlow]
+	fl = fitparaml[end]
+	gexl, gcontl, gseql = genfuncs(fitparaml...)
 
+	pnoexl = taylor_expand(z->gcontl(z)*gexl(z), order = plotcountsl[end]).coeffs
+    pseql = taylor_expand(gseql, order = plotcountsl[end]).coeffs
+    pnol = taylor_expand(gcontl, order = plotcountsl[end]).coeffs
+end
 
-# 		plot(counts, countfreq, ylim=(0, 3*peak), xlim=(0, 0.75*countmax), label="Counts", xlabel="$(TF) Count\nν=$(@sprintf("%.2g", νfit)) , γ=$(@sprintf("%.1f", γfit)) , μ=$(@sprintf("%.1f", μfit)) , r=$(@sprintf("%.3g", rfit)), f=$(@sprintf("%.2g", ffit))", ylabel="Fraction of Droplets")
+# ╔═╡ 78084e5d-1b00-4740-ada8-322cb53a3bdb
+begin
+	xliml = (0, 42)
+	xticksl = [0, 20]
+	yliml = (0, 0.01)
+	yticksl = [0, 0.025, 0.05]
+	plot(plotcountsl, plotcountfreql, color = 1, lw=3, label="Counts")
+
+	plot!(plotcountsl, (1-fl).*pnol, lw=3, label="Contaminant")
+	plot!(plotcountsl, fl.*pnoexl, lw=3, label="Exp+Cont", c=5)
 	
-# 		plot!(0:countmax, pnolist, label="Noise", lw=2)
-
-# 		plot!(0:countmax, pnoexlist, label="Expression", lw=2)
+	# plot!(plotcounts, pseqlist.+4e-5, lw=3, label="Total")
 	
-# 		plot!(0:countmax, taylor_expand(z->Gseq(z, results.minimizer...), order=countmax).coeffs .+ peak*2e-2, label="Mixture", lw=2)
+	plot!(xlim=xliml, xticks = xticksl, ylim=yliml, yticks=yticksl, size=(300, 300), tickfontsize=16, legendfontsize=12, legend = false)
+	# savefig("../Plots/Fit_PostLow_$(plotcond)_$(plotrep)_$(testTFlow).png")
+end
 
-# 		savefig("/Users/forrestsheldon/Dropbox/Projects/GeneBinarisation/Plots/GeneFits/$(TF)_MixtureFit_$(thresh).png")
-# 	end
-	
-# end
-
-# ╔═╡ 7864f60b-c61f-4e03-9952-15dd110e3304
+# ╔═╡ d8f00d51-b809-4b37-a05c-8450998c58a9
 md"""
-### Examining Results of the fit
+### Final Param
 """
 
-# ╔═╡ 6fa4ddf4-77a1-496d-b20e-de76694e8435
+# ╔═╡ 5002c70a-9a59-497d-afed-9dd1342c43a0
 begin
-	histogram([res.minimizer[1] for res in fitres], nbins=8, label=false, size=(300,200),xticks = [0, 0.002, 0.004], yticks = [0, 5, 10],tickfontsize=12)#, xlabel="ν", ylabel = "Number of TFs")
-	# savefig("Plots/Histnu.png")
+	
+	wo1fparam = load_tsv(finalfitpath("withoutAmp", "R01"))
+	wo2fparam = load_tsv(finalfitpath("withoutAmp", "R02"))
+
+	w1fparam = load_tsv(finalfitpath("withAmp", "R01"))
+	w2fparam = load_tsv(finalfitpath("withAmp", "R02"))
+
+	allplasmids = intersect(names(wo1fparam), names(wo2fparam), names(w1fparam), names(w2fparam))
 end
 
-# ╔═╡ d805a9ca-d12e-485f-9206-3996605002d5
+# ╔═╡ 9b0c5375-f051-47fb-ac9c-232cb0a36391
+copy = sum(-log.(1 .- Vector(w1fparam[5, :])))
+
+# ╔═╡ dbeb996f-9590-4c6d-9cc6-4bf78262e80a
+histogram(Vector(wo1fparam[6,:]))
+
+# ╔═╡ 4bb8ac4e-b80a-4f09-bddc-6da3e4112b87
+histogram(Vector(wo2fparam[6,:]))
+
+# ╔═╡ 397ce2d2-2d43-4d84-a512-4ba6b714c6c0
 begin
-	histogram([res.minimizer[2] for res in fitres], label = false, size=(300,200), tickfontsize=12)#, xlabel="γ", ylabel = "Number of TFs")
-	# savefig("Plots/Histgamma.png")
+	cmap1 = countmap(wo1fparam[6,:])
+	cmap2 = countmap(wo2fparam[6,:])
+	
+	thresh1 = sort(collect(keys(cmap1)))
+	thresh2 = sort(collect(keys(cmap2)))
+
+	allthresh = convert(Array{Integer}, sort(union(thresh1, thresh2)))
+	
+	nthresh1 = size(wo1fparam, 2)
+	nthresh2 = size(wo2fparam, 2)
+	
+	freq1 = [get(cmap1, t, 0)/nthresh1 for t in allthresh]
+	freq2 = [get(cmap2, t, 0)/nthresh2 for t in allthresh]
+
+	groupedbar(allthresh, [freq1 freq2], lw=0, legend=false, tickfontsize=16, xticks=1:maximum(allthresh), size=(350, 300))
 end
 
-# ╔═╡ 540d79c6-07d6-48f5-97e8-bb95e6e61c61
+# ╔═╡ 551a80ed-1d48-4ada-91f1-9ea92a6bc6c6
 begin
-	histogram([res.minimizer[1]*res.minimizer[2] for res in fitres], label = false, xlim = (0.013,  0.033), size=(300,200), tickfontsize=12)#, xlabel="νγ", ylabel = "Number of TFs")
-	# savefig("Plots/Histnugamma.png")
+	woBClist = intersect(names(wo1fparam), names(wo2fparam))
+	scatter(Vector(wo1fparam[6,woBClist]), Vector(wo2fparam[6,woBClist]))
 end
 
-# ╔═╡ 36d0fd95-ee29-4cd8-8399-d957868fe4ce
-median([res.minimizer[1]*res.minimizer[2] for res in fitres])
+# ╔═╡ ff7135f3-80e2-4728-ac16-ff70ef3ce037
+begin
+	cmap1a = countmap(w1fparam[6,:])
+	cmap2a = countmap(w2fparam[6,:])
+	
+	thresh1a = sort(collect(keys(cmap1a)))
+	thresh2a = sort(collect(keys(cmap2a)))
 
-# ╔═╡ 01c4d4d0-24ee-4cc2-a81a-65cda8583b4f
+	allthresha = convert(Array{Integer}, sort(union(thresh1a, thresh2a)))
+	
+	nthresh1a = size(w1fparam, 2)
+	nthresh2a = size(w2fparam, 2)
+	
+	freq1a = [get(cmap1a, t, 0)/nthresh1a for t in allthresha]
+	freq2a = [get(cmap2a, t, 0)/nthresh2a for t in allthresha]
+
+	groupedbar(allthresha, [freq1a freq2a], lw=0, legend=false, tickfontsize=16, size=(900, 300), barposition=:dodge)
+end
+
+# ╔═╡ cfa31038-2057-4708-8e99-7b3544849351
+begin
+	wBClist = intersect(names(w1fparam), names(w2fparam))
+	
+	scatter(Vector(w1fparam[6,wBClist]), Vector(w2fparam[6,wBClist]), alpha = 0.5, markerstrokewidth=0, color=2, label="with Amplification")
+	scatter!(Vector(wo1fparam[6,woBClist]), Vector(wo2fparam[6,woBClist]), alpha = 0.6, markerstrokewidth=0, color=1, label="w/o Amplification")
+	plot!(tickfontsize=16, legendfontsize=12, legendtraceorder="reversed", size = (500, 250))
+	# savefig("../Plots/Threshold_corr.png")
+end
+
+# ╔═╡ 3f8d55e0-0a61-41f1-a2be-9da0f29bea84
 md"""
-### Errors
+### ROC curves, Error Rates, etc.
 """
 
-# ╔═╡ 92a2c98e-3ab6-4e74-b8d6-f0965f636a22
+# ╔═╡ 7a11e58e-01ca-40b3-8c9a-c4a06b3fde19
 begin
-	fpall = []
-	fnall = []
-	for (erridx, TF) in enumerate(TFkept)
-		
-		thresherr = thresholds[erridx]
-		
-		countdicterr = formcountdict(TF, celldf, 0)
-		countmaxerr = maximum(keys(countdicterr))
-		
-		νerr, γerr, μerr, rerr, ferr = fitres[erridx].minimizer
-	
-		pnoexlisterr=taylor_expand(z->ferr*Gnoex(z, νerr, ferr*γerr, μerr, rerr), order=countmaxerr).coeffs
-	
-		pnolisterr = taylor_expand(z->(1-ferr)*Gnoise(z, νerr, ferr*γerr, μerr, rerr), order=countmaxerr).coeffs
-	
-		psumerr = pnoexlisterr .+ pnolisterr
-	
-		fplist = []
-		fnlist=[]
-	
-		for (c, nc) in countdicterr
-			if c < thresherr
-				for i in 1:nc
-					push!(fnlist, pnoexlisterr[c+1]/psumerr[c+1])
-				end
-			else
-				for i in 1:nc
-					push!(fplist, pnolisterr[c+1]/psumerr[c+1])
-				end
-			end
-		end
+	ROCrep = "R01"
+	wROCparamdf = load_tsv(finalfitpath("withAmp", ROCrep))
+	wROCcountdf = load_tsv(countpath("withAmp", ROCrep))
+	wROCBClist = names(wROCparamdf)
 
-		push!(fpall, fplist)
-		push!(fnall, fnlist)
-	end
+	woROCparamdf = load_tsv(finalfitpath("withoutAmp", ROCrep))
+	woROCcountdf = load_tsv(countpath("withoutAmp", ROCrep))
+	woROCBClist = names(woROCparamdf)
 end
 
-# ╔═╡ b380cb6d-7532-4159-aecd-a38a457d6cf1
+# ╔═╡ 817e41a9-2ea0-4895-bb4c-26efc676ed38
 begin
-	fpflatten = round.(vcat(fpall...), digits=2)
-	histogram(fpflatten, nbins=50, legend=false)
-end
-
-# ╔═╡ 7e50d391-3fa6-448b-8547-939022c01168
-histogram(round.(vcat(fnall...), digits=2), nbins=50, legend=false)
-
-# ╔═╡ 446147dd-3af5-459d-ad58-88345fb16dc3
-md"""
-### False Positive rates with Threshold 1
-"""
-
-# ╔═╡ 0fb0dd35-06c0-43c4-a321-60d0fe39e4e1
-begin
-
-	fprates = []
-	for (TFidx, TF) in enumerate(TFkept)
-		TF = TFkept[TFidx]
-		thresherr = thresholds[TFidx]
+	function ROCcurve(ROCBC, ROCcountdf, ROCparamdf)
+		maxcount = maximum(ROCcountdf[:,ROCBC])
+		ROCparam = ROCparamdf[1:5, ROCBC]
 		
-		countdicterr = formcountdict(TF, celldf, 0)
-		countmaxerr = maximum(keys(countdicterr))
+		ROCgex, ROCgcont, ROCgseq = genfuncs(ROCparam...)
+		ROCgexco(z) = ROCgex(z)*ROCgcont(z)
 	
-		fpcounts = 0
-		tpcounts = 0
+		pexco = taylor_expand(ROCgexco, order = maxcount).coeffs
+		pco = taylor_expand(ROCgcont, order = maxcount).coeffs
+		pexco[pexco .<=0] .= 0
+		pco[pco .<=0] .= 0
 	
-		for (c, nc) in countdicterr
-			if c >= 1 && c < thresherr
-				fpcounts += nc
-			elseif c >= thresherr
-				tpcounts += nc
-			end
-		end
+		TPR = [1-sum(pexco[1:t]) for t in 0:maxcount]
 	
-		push!(fprates, fpcounts/(fpcounts + tpcounts))
+		FPR = [1-sum(pco[1:t]) for t in 0:maxcount]
+
+		return TPR, FPR
 	end
 	
 end
 
-# ╔═╡ 97dd83cf-c914-4334-994a-bf28f352af9c
+# ╔═╡ 3ff602b5-a54d-4f9d-87c9-e036caa5c6a1
 begin
-	histogram(fprates, xlim = (0, 1.03), legend=false, tickfontsize=25, size=(600, 400), xticks=[0, 0.2, 0.4, 0.6, 0.8, 1.0])
-	# savefig("Plots/FalsePositive.png")
+
+	TPR1, FPR1 = ROCcurve(woROCBClist[1], woROCcountdf, woROCparamdf)
+	fig = plot(FPR1, TPR1, color = 1, alpha = 0.3, label = "w/o Amplification")
+
+	for ROCBC in woROCBClist[2:end]
+		TPR, FPR = ROCcurve(ROCBC, woROCcountdf, woROCparamdf)
+		plot!(fig, FPR, TPR, color = 1, alpha = 0.3, label = false)
+	end
+
+	TPR2, FPR2 = ROCcurve(wROCBClist[1], wROCcountdf, wROCparamdf)
+	plot!(fig, FPR2, TPR2, color = 2, alpha = 0.2, label="with Amplification")
+
+	for ROCBC in wROCBClist[2:end]
+		TPR, FPR = ROCcurve(ROCBC, wROCcountdf, wROCparamdf)
+		plot!(fig, FPR, TPR, color = 2, alpha = 0.2, label = false)
+	end
+	plot!(fig, tickfontsize = 16, legendfontsize = 12, legendtraceorder="reversed", size = (300, 200), xticks = [0, 0.5, 1], yticks = [0, 0.5, 1])
+	# savefig("../Plots/ROCcurve_$(ROCrep).png")
 end
 
-# ╔═╡ f8d5e9c8-7f2a-486d-b6d7-dfed2450c96b
+# ╔═╡ 8424f5bf-2aee-4050-a487-c9e3d0ecbb35
 begin
-	histogram(thresholds, label = false, size=(600,400), xaxis=:identity, tickfontsize=24, yticks = [0, 10, 20])#, xlabel="Threshold", ylabel="Number of TFs")
-	# savefig("Plots/Thresholds.png")
+	woFPfrac = []
+	for ROCBC in woROCBClist
+		ROCparam = woROCparamdf[1:5, ROCBC]
+		fROC = ROCparam[end]
+			
+		ROCgex, ROCgcont, ROCgseq = genfuncs(ROCparam...)
+		FPprob = (1-fROC)*(1-ROCgcont(0))
+		TPprob = fROC*(1-ROCgex(0)*ROCgcont(0))
+		push!(woFPfrac, FPprob/(FPprob+TPprob))
+	end
+
+	wFPfrac = []
+	for ROCBC in wROCBClist
+		ROCparam = wROCparamdf[1:5, ROCBC]
+		fROC = ROCparam[end]
+			
+		ROCgex, ROCgcont, ROCgseq = genfuncs(ROCparam...)
+		FPprob = (1-fROC)*(1-ROCgcont(0))
+		TPprob = fROC*(1-ROCgex(0)*ROCgcont(0))
+		push!(wFPfrac, FPprob/(FPprob+TPprob))
+	end
+	histogram(woFPfrac, nbins = 20, alpha = 0.9, lw=0, label = "w/o Amplification")
+	histogram!(wFPfrac, nbins=20, alpha = 0.7, lw=0, label = "with Amplification")
+	plot!(tickfontsize = 16, legendfontsize = 12, size =(300, 200), xticks = [0, 0.4, 0.8], yticks = [0, 10, 20])
+
+	# savefig("../Plots/FPfrac_$(ROCrep).png")
 end
 
 # ╔═╡ Cell order:
@@ -737,49 +853,55 @@ end
 # ╠═04c7ebc3-d911-4f6d-ac1d-c21262506972
 # ╠═7eb6af35-b356-4b9d-a203-22913e239eab
 # ╟─adffddb0-d063-490a-a17d-4587fa350749
-# ╠═02d9a29a-b282-48c2-a883-c06295f576b9
-# ╠═7dfdca3e-ad92-4c15-8709-fa32b3496197
-# ╠═50580bae-24ff-40c8-98f9-5600589572fc
-# ╠═86042e1e-3ed1-4fd4-8296-8f25c61c3f16
-# ╠═96f7230d-1f62-45f8-91e8-0b4f7dd28348
-# ╠═4778354d-4208-4b65-ba8f-67f5f86233b9
-# ╠═5961d6a2-4b13-4865-b6be-0e8ece20d5f2
-# ╠═e0a3512d-2b66-4f5c-9bda-8c7a0712ecbf
-# ╠═0c15417f-d723-4672-8039-c33564b12f61
-# ╠═b501569c-59e7-46d4-a059-02708c44eb99
-# ╠═07dd1ce6-7791-4b37-9695-24ecb8dd6fcb
-# ╠═35134891-e3dd-459c-8703-97235be886ea
-# ╠═b09d1534-311a-4fd2-83d2-d1a9628b0c34
-# ╠═ff72b3c2-c4e1-458a-9f57-34fbcd694327
-# ╠═487249ca-ddcf-4dbd-8c79-dde5639cfb29
-# ╟─7c18dc4c-fab0-48ba-8693-1e0158cb029e
-# ╟─88e75c2b-7b0f-4625-979c-6b48bd034d06
-# ╠═78ca2110-df58-4032-a5f5-21d6a9fcae59
-# ╟─c9b28149-b848-4cae-8de7-70533628c7dd
-# ╠═b98ae866-3d06-4126-b58d-537eaab6b504
-# ╠═d35b5774-cb3d-4214-9a70-48dbad96ca84
-# ╠═054d8a56-a86d-4883-be0e-901b01893570
-# ╟─7c28ffc9-3720-4808-ae17-cabad2d89c68
-# ╟─c1e1a053-6d49-4ae8-a1d1-c6fa5f712c3c
-# ╟─60f09855-a237-4259-8c6d-98eaf946c40d
-# ╠═09fbc6b9-94e4-4109-9173-571bf648f35a
-# ╠═1cc1ee57-3d3b-48aa-941e-8bf70b3e3132
-# ╠═037c7154-c014-476a-9b36-e2605884be04
-# ╠═7345e9fd-438e-4117-89a8-b7a88cb70dc4
-# ╠═e101d9ac-1b7d-4cb3-896a-edc2b9ecbcde
-# ╠═9441c065-2d92-43ad-964a-51f2838971c2
-# ╠═53c56589-b43e-4e23-9bfb-6b1097715ad0
-# ╠═482c62fa-12f5-48fd-bdb7-9ce62bceaabc
-# ╠═1614673f-5bc8-4907-a89c-95d826dbedf7
-# ╠═777d7c02-a033-4060-a11d-3b70278edafa
-# ╠═a336c29d-502c-4727-977b-578c9798ce53
-# ╠═97919f1b-5428-44dc-928d-b9ee2f141a9e
-# ╠═8e6e6608-f389-4c9d-9730-e13fb91a2319
-# ╠═1454ac4e-5c4f-4f36-bbfb-d95574695e0d
+# ╠═ab46ed63-338f-4297-94d1-0bda0b9a9704
+# ╟─33361e24-b008-4996-b36e-90ffbd1c9874
+# ╠═1c1e08d4-dc8d-46bb-a275-b8146b1f75c0
+# ╠═87d16f2c-b2a9-44e6-a4ec-88eda65a8739
+# ╠═dc7489d6-35f5-46f5-a978-e16abbf8072d
+# ╠═95ee2eb2-a3f1-4e0a-99d9-3913d6334e71
+# ╠═29302f0f-4ccb-4905-a8d4-fc79934809df
+# ╟─b13cb5c8-e27b-47ef-b523-a95c73b4a23f
+# ╠═68822eff-a59b-486b-9ac3-5c9ae7af734d
+# ╠═aed79458-b324-4662-a1c3-7368768a4047
+# ╠═972a908d-5fa8-406e-8832-4f30af6ffdb6
+# ╠═e2f55db3-c8d5-4f69-b540-59e7ca551abd
+# ╠═653b2c74-2dca-4988-865c-02d99b1ee49f
+# ╟─293a0eb4-d300-4e67-8388-dd489e2dd427
+# ╠═10cdb8f2-95c2-429f-b7e4-a39a99f6db65
+# ╟─7f274c2e-dc27-4cb4-92dc-4a649ca3e3e3
+# ╠═ff34c6db-35f8-4e36-9f6c-f75227b39c5c
+# ╠═ece369cf-5820-42c5-b4ea-5c7fa9f6cd01
+# ╠═7332a6d2-ed2c-4619-85fc-c1aa26f228e6
+# ╠═5ef3aa92-7638-464c-8714-1fe78f6aaa3c
+# ╠═01ea329b-4781-401b-aa8d-a7ee347a5b81
+# ╠═d2858b3d-e9b1-49d5-8310-136fb8cba12f
+# ╠═a55d2c29-284e-418c-a683-c793d3db8444
+# ╠═43c4454f-b901-4a53-a9fc-6fe0e32520db
+# ╠═b8fd4822-e4d0-4cf8-9efa-589f9205ae28
+# ╠═a29d9e64-6325-442e-9d9a-2e26730f818c
+# ╠═086176d3-54a5-4572-b888-5a8fbd770ab1
+# ╠═5969e565-cab4-483f-b0b2-66205a9293db
+# ╠═fe4c4791-d51e-4a34-a539-874f9dc82aae
+# ╟─c3828bf3-8401-477e-899a-b6ac375552ff
+# ╠═ab30e5f7-a0ea-4e5e-8124-7a1052eef7e5
+# ╠═523a26af-9b92-45a3-9f2f-8b6f50b5a790
+# ╠═8a6b0fe0-9be0-4b3d-80c7-ac4bae5ac822
+# ╠═c6757638-8730-457e-9dd5-0c12c78ba4cf
+# ╠═c484975f-8bc9-413b-b28a-35947491cf60
+# ╠═d09e3965-d0fc-499e-b303-804ec35e7023
+# ╠═071c0c0a-bc39-46bf-86bc-a88338e5e060
+# ╠═ac85e63f-df7c-4af1-9331-348c571bef7a
+# ╠═a52dde76-615a-4a19-832d-9e3ce635bc75
+# ╠═65d6643b-fea1-4816-8a5c-da485a3e9d5d
+# ╠═16738e01-a06f-4330-ab9f-80aea36fa226
+# ╠═ecbe3dc0-af16-452e-8f6d-0a11b0ca22f4
+# ╠═53532863-e43f-4fec-8f03-05a31c0ebe89
+# ╠═6ddefc81-f4aa-4102-bcca-345371e1491e
+# ╠═cc5792d3-54f1-4f54-bd63-c290cfe00174
+# ╠═af6006d3-614b-4e2b-b9ce-0dbfb0b3ec48
+# ╠═c1bc847d-b29b-4865-9a49-281adaa19062
 # ╟─6377a680-8d8e-4675-858f-427bb75db022
 # ╠═70400124-5b17-4ad6-bddb-4a2715d0d7d2
-# ╠═7b028b95-79ee-4133-a986-64be7579c1df
-# ╠═127cd7d8-241d-40ff-a9f6-5e2e2f307d56
 # ╟─1044643c-884f-4017-a7c8-55a129374cb9
 # ╠═fdcea879-6ae0-4e74-b931-934e551f2fed
 # ╠═725a2c87-b9c3-418c-8fc1-48c448713400
@@ -790,23 +912,25 @@ end
 # ╠═41929758-8a1a-4e5d-8078-36e715fbb2a9
 # ╠═eb493270-6eec-4883-9237-c0b8862a332b
 # ╠═1fced61e-e061-42e5-b153-0d64f7d3d4b8
-# ╠═68bff31e-b982-4183-8c5a-8585aee5f47d
 # ╠═3db6e14f-aca3-44ed-bd3c-12319468b1ed
-# ╠═31d069e8-3838-4686-9f05-8ae423f70c47
-# ╠═426cd89c-25de-4c59-98cd-a0a976adf186
-# ╠═af7132a5-7f3a-4c84-a093-c403387016d7
-# ╟─cbd23588-9a0f-4b99-ad6e-0c81506e25d6
-# ╠═ff816c47-ec1e-4969-ba98-585232eeca05
-# ╟─7864f60b-c61f-4e03-9952-15dd110e3304
-# ╠═6fa4ddf4-77a1-496d-b20e-de76694e8435
-# ╠═d805a9ca-d12e-485f-9206-3996605002d5
-# ╠═540d79c6-07d6-48f5-97e8-bb95e6e61c61
-# ╠═36d0fd95-ee29-4cd8-8399-d957868fe4ce
-# ╟─01c4d4d0-24ee-4cc2-a81a-65cda8583b4f
-# ╠═92a2c98e-3ab6-4e74-b8d6-f0965f636a22
-# ╠═b380cb6d-7532-4159-aecd-a38a457d6cf1
-# ╠═7e50d391-3fa6-448b-8547-939022c01168
-# ╟─446147dd-3af5-459d-ad58-88345fb16dc3
-# ╠═0fb0dd35-06c0-43c4-a321-60d0fe39e4e1
-# ╠═97dd83cf-c914-4334-994a-bf28f352af9c
-# ╠═f8d5e9c8-7f2a-486d-b6d7-dfed2450c96b
+# ╟─3f9816ad-7661-45e4-88fe-6af36353720b
+# ╠═aa008f08-94dd-4bfb-9648-e6b247a9b7dc
+# ╠═1e595a25-dd80-4878-8cad-5666b9f5a817
+# ╠═ebdf1dec-89e3-41ef-bf85-69e112c420fe
+# ╠═efea7b8a-ab20-4aef-8156-e3f664a3dab7
+# ╠═928e4c83-67a7-4c1c-8c82-0552f3348d82
+# ╠═78084e5d-1b00-4740-ada8-322cb53a3bdb
+# ╟─d8f00d51-b809-4b37-a05c-8450998c58a9
+# ╠═5002c70a-9a59-497d-afed-9dd1342c43a0
+# ╠═9b0c5375-f051-47fb-ac9c-232cb0a36391
+# ╠═dbeb996f-9590-4c6d-9cc6-4bf78262e80a
+# ╠═4bb8ac4e-b80a-4f09-bddc-6da3e4112b87
+# ╠═397ce2d2-2d43-4d84-a512-4ba6b714c6c0
+# ╠═551a80ed-1d48-4ada-91f1-9ea92a6bc6c6
+# ╠═ff7135f3-80e2-4728-ac16-ff70ef3ce037
+# ╠═cfa31038-2057-4708-8e99-7b3544849351
+# ╠═3f8d55e0-0a61-41f1-a2be-9da0f29bea84
+# ╠═7a11e58e-01ca-40b3-8c9a-c4a06b3fde19
+# ╠═817e41a9-2ea0-4895-bb4c-26efc676ed38
+# ╠═3ff602b5-a54d-4f9d-87c9-e036caa5c6a1
+# ╠═8424f5bf-2aee-4050-a487-c9e3d0ecbb35

@@ -48,7 +48,7 @@ begin
 end
 
 # ╔═╡ 9a12dc93-31b7-456d-92b4-714f649c360b
-histogram(αvec)
+histogram(αvec, nbins= 15)
 
 # ╔═╡ ba11d865-17fe-4c89-b971-d0eb83286c7e
 histogram(fvec)
