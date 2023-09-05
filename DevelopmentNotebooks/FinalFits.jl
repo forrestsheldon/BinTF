@@ -193,34 +193,111 @@ md"""
 Assemble these into a single figure
 """
 
-# ╔═╡ 10cdb8f2-95c2-429f-b7e4-a39a99f6db65
+# ╔═╡ d7d7ebda-ffe7-4a58-9362-7df922c5c2fd
 begin
-	scatter(νwo1[wo1perm], γwo1[wo1perm], label=nothing, zcolor=log.(wo1numcounts[wo1perm]), color=myblues, markerstrokewidth=0)
-	wo1linebounds = [1.1*10^-4, 4*10^-3]
+	scatter(νwo1, γwo1, label="Replicate 1", color=1, markerstrokewidth=0)
+	wo1linebounds = [1.1*10^-4, 7*10^-3]
 	plot!(wo1linebounds, νγmedwo1./wo1linebounds, color = 1, lw=2, label=:none)
 	# scatter!([NaN], [NaN], markerstrokewidth=0, color=colorpalette[1])  # Add dummy series
 
 
-	scatter!(νwo2[wo2perm], γwo2[wo2perm], label=nothing, zcolor=log.(wo2numcounts[wo2perm]), color=myoranges, markerstrokewidth=0)
+	scatter!(νwo2, γwo2, label="Replicate 2", color=2, markerstrokewidth=0)
 	wo2linebounds = [10^-4, 3*10^-3]
 	plot!(wo2linebounds, νγmedwo2./wo2linebounds, color = 2, lw=2, label=:none)
 	# # scatter!([NaN], [NaN], markerstrokewidth=0, color=colorpalette[2])  # Add dummy series
 	
-	scatter!(νw1[w1perm], γw1[w1perm], label=:none, zcolor=log.(w1numcounts[w1perm]), color=myblues, markerstrokewidth=0)
-	w1linebounds = [6*10^(-3), 2*10^-2]
+	scatter!(νw1, γw1, label=:none, color=1, markerstrokewidth=0)
+	w1linebounds = [6*10^(-3), 2.3*10^-2]
 	plot!(w1linebounds, νγmedw1./w1linebounds, color = 1, lw=2, label=:none)
 
-	scatter!(νw2[w2perm], γw2[w2perm], markerstrokecolor=:auto, label=:none, tickfontsize=15, zcolor=log.(w2numcounts[w2perm]), color=myoranges, markerstrokewidth=0)
-	w2linebounds = [6*10^(-3), 1.6*10^-2]
+	scatter!(νw2, γw2, markerstrokecolor=:auto, label=:none, tickfontsize=15, color=2, markerstrokewidth=0)
+	w2linebounds = [6*10^(-3), 1.8*10^-2]
 	plot!(w2linebounds, νγmedw2./w2linebounds, color = 2, lw=2, label=:none, size=(600, 350), legendfontsize=12)
+
+	plot!(xscale=:log10, yscale=:log10, colorbar=:false, xlim=(8*10^-5, 3*10^-2), ylim=(3.5, 2.5*10^2))
+	# savefig("../Plots/LogScatter_noshading.png")
+end
+
+# ╔═╡ f36c3230-92cd-4c9e-b01c-590bbe5776bd
+begin
+	scatter(νwo1, γwo1, markerstrokecolor=:auto, label="Replicate 1")
+	plot!(linebounds, νγmedwo1./linebounds, color=1, lw=2, label=false)
+
+	scatter!(νwo2, γwo2, color=2, markerstrokecolor=:auto, label="Replicate 2", tickfontsize=16, xticks=[0, 0.002, 0.004], yticks=[0, 100, 200], xlim=[0, 0.005], ylim = [0, 200], size=(600, 350))
+	plot!(linebounds, νγmedwo2./linebounds, color=2, lw=2, label=false, legendfontsize=12, legend=false)
+
+	scatter!(νwo1, γwo1, inset=(1, bbox(0.25, 0.3, 0.75, 0.7, :bottom, :left)), subplot = 2, label="Replicate 1", color=1, markerstrokewidth=0, xscale=:log10, yscale=:log10)
+	plot!(wo1linebounds, νγmedwo1./wo1linebounds, subplot=2, color = 1, lw=2, label=:none)
+
+	scatter!(νwo2, γwo2, subplot=2, label="Replicate 2", color=2, markerstrokewidth=0)
+	plot!(wo2linebounds, νγmedwo2./wo2linebounds, subplot=2, color = 2, lw=2, label=:none)
+
+	scatter!(νw1, γw1, subplot=2, label=:none, color=1, markerstrokewidth=0)
+	plot!(w1linebounds, νγmedw1./w1linebounds, subplot=2, color = 1, lw=2, label=:none)
+
+	scatter!(νw2, γw2, subplot=2, markerstrokecolor=:auto, label=:none, tickfontsize=15, color=2, markerstrokewidth=0)
+	plot!(w2linebounds, νγmedw2./w2linebounds, subplot=2, color = 2, lw=2, label=:none)
+
+	plot!(subplot=2, tickfontsize=16, legendfontsize=12, size=(600, 400))
+
+	# savefig("../Plots/LogScatter_inset.png")
+end
+
+# ╔═╡ 10cdb8f2-95c2-429f-b7e4-a39a99f6db65
+begin
+	scatter(νwo1[wo1perm], γwo1[wo1perm], label=nothing, zcolor=log.(wo1numcounts[wo1perm]), color=myblues, markerstrokewidth=0)
+	wo1lineboundsc = [1.1*10^-4, 4*10^-3]
+	plot!(wo1lineboundsc, νγmedwo1./wo1lineboundsc, color = 1, lw=2, label=:none)
+	# scatter!([NaN], [NaN], markerstrokewidth=0, color=colorpalette[1])  # Add dummy series
+
+
+	scatter!(νwo2[wo2perm], γwo2[wo2perm], label=nothing, zcolor=log.(wo2numcounts[wo2perm]), color=myoranges, markerstrokewidth=0)
+	wo2lineboundsc = [10^-4, 3*10^-3]
+	plot!(wo2lineboundsc, νγmedwo2./wo2lineboundsc, color = 2, lw=2, label=:none)
+	# # scatter!([NaN], [NaN], markerstrokewidth=0, color=colorpalette[2])  # Add dummy series
+	
+	scatter!(νw1[w1perm], γw1[w1perm], label=:none, zcolor=log.(w1numcounts[w1perm]), color=myblues, markerstrokewidth=0)
+	w1lineboundsc = [6*10^(-3), 2*10^-2]
+	plot!(w1lineboundsc, νγmedw1./w1lineboundsc, color = 1, lw=2, label=:none)
+
+	scatter!(νw2[w2perm], γw2[w2perm], markerstrokecolor=:auto, label=:none, tickfontsize=15, zcolor=log.(w2numcounts[w2perm]), color=myoranges, markerstrokewidth=0)
+	w2lineboundsc = [6*10^(-3), 1.6*10^-2]
+	plot!(w2lineboundsc, νγmedw2./w2lineboundsc, color = 2, lw=2, label=:none, size=(600, 350), legendfontsize=12)
 
 	plot!(xscale=:log10, yscale=:log10, colorbar=:false, xlim=(8*10^-5, 3*10^-2), ylim=(6, 2.5*10^2))
 	# savefig("../Plots/LogScatter.png")
 end
 
+# ╔═╡ bdd3a1f1-8e69-4559-8f35-4c8182340425
+begin
+	
+	histogram(γwo1, lw=0, alpha=0.6, label="w/o Amp.", color=2)
+
+	histogram!(γw1, lw=0, alpha=0.5, label="with Amp.", color=1)
+	
+	plot!(lw=0, tickfontsize=16, legendfontsize=14, size=(600,400))
+
+	# savefig("../Plots/Histograms_gamma1.png")
+end
+
+# ╔═╡ 277256d1-b2e4-4d52-8efd-b74b477a1fb4
+begin
+	histogram(γw2, lw=0, alpha=0.8)
+	histogram!(γwo2, lw=0, alpha=0.5)
+	plot!(lw=0, tickfontsize=16)
+end
+
+# ╔═╡ 8aa03f0c-a67a-42c1-a913-8a7a8f591b2f
+begin
+	histogram(vcat(γw1,γw2), lw=0, alpha=0.6, label="with Amp.")
+	histogram!(vcat(γwo1, γwo2), lw=0, alpha=0.5, label="w/o Amp.")
+	plot!(lw=0, tickfontsize=16, legendfontsize=14, size=(600,300))
+	# savefig("../Plots/Histograms_gamma12.png")
+end
+
 # ╔═╡ 7f274c2e-dc27-4cb4-92dc-4a649ca3e3e3
 md"""
-To show concentration of γ and α we look at their finite size scaling plot
+To look for evidence of concentration, we look at the finite size scaling plots of the parameters
 """
 
 # ╔═╡ ff34c6db-35f8-4e36-9f6c-f75227b39c5c
@@ -867,7 +944,12 @@ end
 # ╠═e2f55db3-c8d5-4f69-b540-59e7ca551abd
 # ╠═653b2c74-2dca-4988-865c-02d99b1ee49f
 # ╟─293a0eb4-d300-4e67-8388-dd489e2dd427
+# ╠═d7d7ebda-ffe7-4a58-9362-7df922c5c2fd
+# ╠═f36c3230-92cd-4c9e-b01c-590bbe5776bd
 # ╠═10cdb8f2-95c2-429f-b7e4-a39a99f6db65
+# ╠═bdd3a1f1-8e69-4559-8f35-4c8182340425
+# ╠═277256d1-b2e4-4d52-8efd-b74b477a1fb4
+# ╠═8aa03f0c-a67a-42c1-a913-8a7a8f591b2f
 # ╟─7f274c2e-dc27-4cb4-92dc-4a649ca3e3e3
 # ╠═ff34c6db-35f8-4e36-9f6c-f75227b39c5c
 # ╠═ece369cf-5820-42c5-b4ea-5c7fa9f6cd01

@@ -536,7 +536,10 @@ begin
 	errνγ = [[] for n in numcountvec]
 	
 	for (nidx, numsimcounts) in enumerate(numcountvec)
-		for _ in 1:100
+		# time to run is roughly 2x number of samples, 1000 shows
+		# great results but it's quite slow
+		nsample  = 100
+		for _ in 1:nsample
 			simcounts = sampleseq(numsimcounts, trueparam...)
 			simcountdict = countmap(simcounts)
 			initial = MoMtest(simcountdict, 5)
@@ -581,6 +584,7 @@ end
 var(errvar[1]), var(errvar[end])
 
 # ╔═╡ 21f8e18f-50cb-442a-9cb9-4088063f1a98
+# when the sample size is pushed large enough, this shows 1/N convergence
 (log(var(errvar[end])) - log(var(errvar[1])))/(log(numcountvec[end]) - log(numcountvec[1]))
 
 # ╔═╡ Cell order:
