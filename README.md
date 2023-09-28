@@ -7,8 +7,10 @@
  For Python, there is a conda environment file in the main
  directory called environment.yml. With conda installed:
 
- ```conda env create -f environment.yml
+ ```
+ conda env create -f environment.yml
  conda activate BinTF
+ ```
 
  should create and activate the environment.
 
