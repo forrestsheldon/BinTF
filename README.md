@@ -1,15 +1,40 @@
 # BinTF
  Normalisation and labeling utilities for transfected cells
 
- Install commands
+After cloning the repository you will need to install the
+appropriate Python and Julia packages.
 
-Fitting the contamination distribution for barcoded 
+For Python, there is a conda environment file in the main
+directory called environment.yml. With conda installed:
 
-add ddPCR note
+conda env create -f environment.yml
+conda activate BinTF
 
-remove zerocounts and add noBCcells
+should create and activate the environment.
 
-"This many cells with counts"
-"And counts at least this high"
+For Julia, with Julia installed and added to your path type
 
-update Distributions and other packages
+julia
+
+to open the REPL, after which
+
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
+
+should install all the required packages. Once that is done,
+you can view the Pluto notebooks in DevelopmentNotebooks/
+with
+
+julia
+
+using Pluto
+Pluto.run()
+
+and then selecting the desired notebook. To run the Streamlit
+app, in the main directory run
+
+streamlit run BarcodeContApp.py --server.fileWatcherType none
+
+Because of the large number of count files, the fileWatcher has
+to be turned off.

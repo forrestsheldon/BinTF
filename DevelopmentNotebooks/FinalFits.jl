@@ -271,9 +271,9 @@ end
 # ╔═╡ bdd3a1f1-8e69-4559-8f35-4c8182340425
 begin
 	
-	histogram(γwo1, lw=0, alpha=0.6, label="w/o Amp.", color=2)
-
-	histogram!(γw1, lw=0, alpha=0.5, label="with Amp.", color=1)
+	histogram(γw1, lw=0, alpha=0.5, label="with Amp.", color=2)
+	
+	histogram!(γwo1, lw=0, alpha=0.6, label="w/o Amp.", color=1)
 	
 	plot!(lw=0, tickfontsize=16, legendfontsize=14, size=(600,400))
 
@@ -349,35 +349,45 @@ begin
 	αw1 = Vector(contparamdfw1[4,:])
 	αw2 = Vector(contparamdfw2[4,:])
 	
-	histogram(αwo1, nbins = 20)
+	histogram(αwo1, nbins = 40, lw=0, alpha = 0.9, label="Replicate 1")
+	histogram!(αwo2, nbins = 20, lw = 0, alpha = 0.7, label="Replicate 2")
+	plot!(tickfontsize = 16, legendfontsize=14, xlabel="α value", ylabel="Number of Barcodes", yticks = [0, 5, 10])
+
+end
+
+# ╔═╡ f030de7f-2af4-4dff-bca5-caff7ac3a0fc
+begin
+	histogram(αw1, nbins = 40, lw=0, alpha = 0.9, label="Replicate 1")
+	histogram!(αw2, nbins = 20, lw = 0, alpha = 0.7, label="Replicate 2")
+	plot!(tickfontsize = 16, legendfontsize=14, xlabel="α value", ylabel="Number of Barcodes", yticks = [0, 5, 10])
 end
 
 # ╔═╡ a29d9e64-6325-442e-9d9a-2e26730f818c
 begin
-	scatter(1 ./wo1numcounts[wo1perm], αwo1[wo1perm], markerstrokewidth=0,  xlabel="Inverse Total Counts 1/N", ylabel="α")
-	plot!(1 ./wo1numcounts[wo1perm], [median(αwo1) for _ in wo1perm])
-	plot!(1 ./wo1numcounts[wo1perm], [median(αwo1, FrequencyWeights(wo1numcounts)) for _ in wo1perm])
+	scatter(1 ./wo1numcounts[wo1perm], αwo1[wo1perm], markerstrokewidth=0, label="Replicate 1")#,  xlabel="Inverse Total Counts 1/N", ylabel="α")
+	scatter!(1 ./wo2numcounts[wo2perm], αwo2[wo2perm], markerstrokewidth=0, alpha=0.7, label="Replicate 2")
+	
+
+	plot!(tickfontsize=16, legendfontsize=14, xticks=[0.0004,0.0012, 0.002], labelfontsize=16, xlabel="1/Sum of Counts", ylabel="α", size=(600, 400))
+
+	# savefig("../Plots/alphaplot_withoutAmp.png")
+	# scatter!(1 ./wo1numcounts[wo1perm], αwo2[wo1perm], markerstrokewidth=0)
+	# plot!(1 ./wo1numcounts[wo1perm], [median(αwo1) for _ in wo1perm])
+	# plot!(1 ./wo1numcounts[wo1perm], [median(αwo1, FrequencyWeights(wo1numcounts)) for _ in wo1perm])
 end
 
-# ╔═╡ 086176d3-54a5-4572-b888-5a8fbd770ab1
+# ╔═╡ 3ca5df27-ae5e-423d-9228-b67389132215
 begin
-	scatter(1 ./wo2numcounts[wo2perm], αwo2[wo2perm], markerstrokewidth=0, xlabel="Inverse Total Counts 1/N", ylabel="α")
-	plot!(1 ./wo2numcounts[wo2perm], [median(αwo2) for _ in wo2perm])
-	plot!(1 ./wo2numcounts[wo2perm], [median(αwo2, FrequencyWeights(wo2numcounts)) for _ in wo2perm])
-end
+	scatter(1 ./w1numcounts[w1perm], αw1[w1perm], markerstrokewidth=0, label="Replicate 1")#,  xlabel="Inverse Total Counts 1/N", ylabel="α")
+	scatter!(1 ./w2numcounts[w2perm], αw2[w2perm], markerstrokewidth=0, alpha=0.7, label="Replicate 2")
+	
 
-# ╔═╡ 5969e565-cab4-483f-b0b2-66205a9293db
-begin
-	scatter(1 ./w1numcounts[w1perm], αw1[w1perm], markerstrokewidth=0, xlabel="Inverse Total Counts 1/N", ylabel="α")
-	plot!(1 ./w1numcounts[w1perm], [median(αw1) for _ in w1perm])
-	plot!(1 ./w1numcounts[w1perm], [median(αw1, FrequencyWeights(w1numcounts)) for _ in w1perm])
-end
+	plot!(tickfontsize=16, legendfontsize=14, xticks=[0.0002, 0.0004, 0.0006], xlim=(0.000125, 0.00063), labelfontsize=16, xlabel="1/Sum of Counts", ylabel="α", ylim=(0, 7.1))
 
-# ╔═╡ fe4c4791-d51e-4a34-a539-874f9dc82aae
-begin
-	scatter(1 ./w2numcounts[w2perm], αw2[w2perm], markerstrokewidth=0, xlabel="Inverse Total Counts 1/N", ylabel="γ")
-	plot!(1 ./w2numcounts[w2perm], [median(αw2) for _ in w2perm])
-	plot!(1 ./w2numcounts[w2perm], [median(αw2, FrequencyWeights(w2numcounts)) for _ in w2perm])
+	# savefig("../Plots/alphaplot_withAmp.png")
+	# scatter!(1 ./wo1numcounts[wo1perm], αwo2[wo1perm], markerstrokewidth=0)
+	# plot!(1 ./wo1numcounts[wo1perm], [median(αwo1) for _ in wo1perm])
+	# plot!(1 ./wo1numcounts[wo1perm], [median(αwo1, FrequencyWeights(wo1numcounts)) for _ in wo1perm])
 end
 
 # ╔═╡ c3828bf3-8401-477e-899a-b6ac375552ff
@@ -829,7 +839,8 @@ begin
 	
 	scatter(Vector(w1fparam[6,wBClist]), Vector(w2fparam[6,wBClist]), alpha = 0.5, markerstrokewidth=0, color=2, label="with Amplification")
 	scatter!(Vector(wo1fparam[6,woBClist]), Vector(wo2fparam[6,woBClist]), alpha = 0.6, markerstrokewidth=0, color=1, label="w/o Amplification")
-	plot!(tickfontsize=16, legendfontsize=12, legendtraceorder="reversed", size = (500, 250))
+	
+	plot!(tickfontsize=16, legendfontsize=12, size = (500, 250))
 	# savefig("../Plots/Threshold_corr.png")
 end
 
@@ -960,10 +971,9 @@ end
 # ╠═a55d2c29-284e-418c-a683-c793d3db8444
 # ╠═43c4454f-b901-4a53-a9fc-6fe0e32520db
 # ╠═b8fd4822-e4d0-4cf8-9efa-589f9205ae28
+# ╠═f030de7f-2af4-4dff-bca5-caff7ac3a0fc
 # ╠═a29d9e64-6325-442e-9d9a-2e26730f818c
-# ╠═086176d3-54a5-4572-b888-5a8fbd770ab1
-# ╠═5969e565-cab4-483f-b0b2-66205a9293db
-# ╠═fe4c4791-d51e-4a34-a539-874f9dc82aae
+# ╠═3ca5df27-ae5e-423d-9228-b67389132215
 # ╟─c3828bf3-8401-477e-899a-b6ac375552ff
 # ╠═ab30e5f7-a0ea-4e5e-8124-7a1052eef7e5
 # ╠═523a26af-9b92-45a3-9f2f-8b6f50b5a790
